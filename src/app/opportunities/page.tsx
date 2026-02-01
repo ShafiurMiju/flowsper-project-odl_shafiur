@@ -226,7 +226,23 @@ export default function OpportunitiesPage() {
         <Card>
           <div className="p-12 text-center">
             <p className="text-gray-600">No pipelines found. Create one in GoHighLevel first.</p>
-          </div>  onDragOver={handleDragOver}
+          </div>
+        </Card>
+      ) : (
+        <div className="overflow-x-auto pb-4">
+          <div className="flex gap-4 min-w-max">
+            {currentPipeline.stages.map((stage) => {
+              const stageOpportunities = opportunitiesByStage?.[stage.id] || [];
+              const stageValue = stageOpportunities.reduce(
+                (sum, opp) => sum + (opp.monetaryValue || 0),
+                0
+              );
+
+              return (
+                <div
+                  key={stage.id}
+                  className="w-80 bg-gray-100 rounded-lg p-4 flex-shrink-0"
+                  onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, stage.id)}
                 >
                   <div className="mb-4">
@@ -266,22 +282,6 @@ export default function OpportunitiesPage() {
                     {stageOpportunities.length === 0 && (
                       <div className="text-center py-8 text-gray-400 text-sm">
                         {draggedOpportunity ? 'Drop here' : 'No opportunities'}
-
-                  <div className="space-y-3">
-                    {stageOpportunities.map((opportunity) => (
-                      <OpportunityCard
-                        key={opportunity.id}
-                        opportunity={opportunity}
-                        pipeline={currentPipeline}
-                        onEdit={handleEditOpportunity}
-                        onDelete={handleDeleteOpportunity}
-                        onMove={handleMoveOpportunity}
-                      />
-                    ))}
-
-                    {stageOpportunities.length === 0 && (
-                      <div className="text-center py-8 text-gray-400 text-sm">
-                        No opportunities
                       </div>
                     )}
                   </div>
