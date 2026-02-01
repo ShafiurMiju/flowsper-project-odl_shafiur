@@ -21,6 +21,7 @@ export default function OpportunitiesPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingOpportunity, setEditingOpportunity] =
     useState<GHLOpportunity | null>(null);
+  const [draggedOpportunity, setDraggedOpportunity] = useState<GHLOpportunity | null>(null);
 
   const fetchPipelines = async () => {
     try {
@@ -142,6 +143,22 @@ export default function OpportunitiesPage() {
     }
   };
 
+  const handleDragStart = (opportunity: GHLOpportunity) => {
+    setDraggedOpportunity(opportunity);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = async (e: React.DragEvent, stageId: string) => {
+    e.preventDefault();
+    if (draggedOpportunity && draggedOpportunity.pipelineStageId !== stageId) {
+      await handleMoveOpportunity(draggedOpportunity.id, stageId);
+    }
+    setDraggedOpportunity(null);
+  };
+
   const handleEditOpportunity = (opportunity: GHLOpportunity) => {
     setEditingOpportunity(opportunity);
   };
@@ -209,22 +226,8 @@ export default function OpportunitiesPage() {
         <Card>
           <div className="p-12 text-center">
             <p className="text-gray-600">No pipelines found. Create one in GoHighLevel first.</p>
-          </div>
-        </Card>
-      ) : (
-        <div className="overflow-x-auto pb-4">
-          <div className="flex gap-4 min-w-max">
-            {currentPipeline.stages.map((stage) => {
-              const stageOpportunities = opportunitiesByStage?.[stage.id] || [];
-              const stageValue = stageOpportunities.reduce(
-                (sum, opp) => sum + (opp.monetaryValue || 0),
-                0
-              );
-
-              return (
-                <div
-                  key={stage.id}
-                  className="w-80 bg-gray-100 rounded-lg p-4 flex-shrink-0"
+          </div>  onDragOver={handleDragOver}
+                  onDrop={(e) => handleDrop(e, stage.id)}
                 >
                   <div className="mb-4">
                     <div className="flex items-center justify-between">
@@ -239,6 +242,30 @@ export default function OpportunitiesPage() {
                       ${stageValue.toLocaleString()}
                     </p>
                   </div>
+
+                  <div className="space-y-3 min-h-[200px]">
+                    {stageOpportunities.map((opportunity) => (
+                      <div
+                        key={opportunity.id}
+                        draggable
+                        onDragStart={() => handleDragStart(opportunity)}
+                        className={`cursor-move ${
+                          draggedOpportunity?.id === opportunity.id ? 'opacity-50' : ''
+                        }`}
+                      >
+                        <OpportunityCard
+                          opportunity={opportunity}
+                          pipeline={currentPipeline}
+                          onEdit={handleEditOpportunity}
+                          onDelete={handleDeleteOpportunity}
+                          onMove={handleMoveOpportunity}
+                        />
+                      </div>
+                    ))}
+
+                    {stageOpportunities.length === 0 && (
+                      <div className="text-center py-8 text-gray-400 text-sm">
+                        {draggedOpportunity ? 'Drop here' : 'No opportunities'}
 
                   <div className="space-y-3">
                     {stageOpportunities.map((opportunity) => (
