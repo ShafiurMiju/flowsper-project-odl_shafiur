@@ -121,19 +121,19 @@ class GHLClient {
   async createOpportunity(
     data: CreateOpportunityPayload
   ): Promise<{ opportunity: GHLOpportunity }> {
-    // Convert camelCase to snake_case for GHL API
+    // GHL API uses camelCase for request body
     const payload: Record<string, unknown> = {
-      location_id: this.locationId,
+      locationId: this.locationId,
       name: data.name,
-      pipeline_id: data.pipelineId,
-      pipeline_stage_id: data.pipelineStageId,
-      contact_id: data.contactId,
+      pipelineId: data.pipelineId,
+      pipelineStageId: data.pipelineStageId,
+      contactId: data.contactId,
     };
 
-    if (data.monetaryValue !== undefined) payload.monetary_value = data.monetaryValue;
+    if (data.monetaryValue !== undefined) payload.monetaryValue = data.monetaryValue;
     if (data.status) payload.status = data.status;
     if (data.source) payload.source = data.source;
-    if (data.assignedTo) payload.assigned_to = data.assignedTo;
+    if (data.assignedTo) payload.assignedTo = data.assignedTo;
 
     return this.request<{ opportunity: GHLOpportunity }>('/opportunities/', {
       method: 'POST',
@@ -145,17 +145,17 @@ class GHLClient {
     opportunityId: string,
     data: Partial<CreateOpportunityPayload>
   ): Promise<{ opportunity: GHLOpportunity }> {
-    // Convert camelCase to snake_case for GHL API
+    // GHL API uses camelCase for request body
     const payload: Record<string, unknown> = {};
 
     if (data.name) payload.name = data.name;
-    if (data.pipelineId) payload.pipeline_id = data.pipelineId;
-    if (data.pipelineStageId) payload.pipeline_stage_id = data.pipelineStageId;
-    if (data.contactId) payload.contact_id = data.contactId;
-    if (data.monetaryValue !== undefined) payload.monetary_value = data.monetaryValue;
+    if (data.pipelineId) payload.pipelineId = data.pipelineId;
+    if (data.pipelineStageId) payload.pipelineStageId = data.pipelineStageId;
+    if (data.contactId) payload.contactId = data.contactId;
+    if (data.monetaryValue !== undefined) payload.monetaryValue = data.monetaryValue;
     if (data.status) payload.status = data.status;
     if (data.source) payload.source = data.source;
-    if (data.assignedTo) payload.assigned_to = data.assignedTo;
+    if (data.assignedTo) payload.assignedTo = data.assignedTo;
 
     return this.request<{ opportunity: GHLOpportunity }>(
       `/opportunities/${opportunityId}`,
