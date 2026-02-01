@@ -34,15 +34,22 @@ class GHLClient {
     const response = await fetch(url, {
       ...options,
       headers: {
-        Authorization: `Bearer ${this.apiKey}`,
+        'Authorization': `Bearer ${this.apiKey}`,
         'Content-Type': 'application/json',
-        Version: '2021-07-28',
+        'Version': '2021-07-28',
         ...options.headers,
       },
+      cache: 'no-store',
     });
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('GHL API Error:', {
+        status: response.status,
+        statusText: response.statusText,
+        url,
+        errorText,
+      });
       throw new Error(
         `GHL API Error: ${response.status} ${response.statusText} - ${errorText}`
       );
