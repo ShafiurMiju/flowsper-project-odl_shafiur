@@ -125,7 +125,7 @@ export default function ContactsPage() {
               placeholder="Search contacts by name, email, or phone..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
+              className="pl-10 text-black placeholder-gray-400"
             />
           </div>
         </div>
