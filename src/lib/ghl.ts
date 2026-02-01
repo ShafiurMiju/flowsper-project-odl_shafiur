@@ -60,9 +60,9 @@ class GHLClient {
 
   // ==================== CONTACTS ====================
 
-  async getContacts(limit = 20, skip = 0): Promise<GHLContactsResponse> {
+  async getContacts(limit = 100): Promise<GHLContactsResponse> {
     return this.request<GHLContactsResponse>(
-      `/contacts/?locationId=${this.locationId}&limit=${limit}&skip=${skip}`
+      `/contacts/?locationId=${this.locationId}&limit=${limit}`
     );
   }
 
@@ -104,10 +104,10 @@ class GHLClient {
 
   // ==================== OPPORTUNITIES ====================
 
-  async getOpportunities(pipelineId?: string, limit = 20): Promise<GHLOpportunitiesResponse> {
-    let url = `/opportunities/search?locationId=${this.locationId}&limit=${limit}`;
+  async getOpportunities(pipelineId?: string, limit = 100): Promise<GHLOpportunitiesResponse> {
+    let url = `/opportunities/search?location_id=${this.locationId}&limit=${limit}`;
     if (pipelineId) {
-      url += `&pipelineId=${pipelineId}`;
+      url += `&pipeline_id=${pipelineId}`;
     }
     return this.request<GHLOpportunitiesResponse>(url);
   }
@@ -121,12 +121,23 @@ class GHLClient {
   async createOpportunity(
     data: CreateOpportunityPayload
   ): Promise<{ opportunity: GHLOpportunity }> {
+    // Convert camelCase to snake_case for GHL API
+    const payload: Record<string, unknown> = {
+      location_id: this.locationId,
+      name: data.name,
+      pipeline_id: data.pipelineId,
+      pipeline_stage_id: data.pipelineStageId,
+      contact_id: data.contactId,
+    };
+
+    if (data.monetaryValue !== undefined) payload.monetary_value = data.monetaryValue;
+    if (data.status) payload.status = data.status;
+    if (data.source) payload.source = data.source;
+    if (data.assignedTo) payload.assigned_to = data.assignedTo;
+
     return this.request<{ opportunity: GHLOpportunity }>('/opportunities/', {
       method: 'POST',
-      body: JSON.stringify({
-        ...data,
-        locationId: this.locationId,
-      }),
+      body: JSON.stringify(payload),
     });
   }
 
@@ -134,11 +145,23 @@ class GHLClient {
     opportunityId: string,
     data: Partial<CreateOpportunityPayload>
   ): Promise<{ opportunity: GHLOpportunity }> {
+    // Convert camelCase to snake_case for GHL API
+    const payload: Record<string, unknown> = {};
+
+    if (data.name) payload.name = data.name;
+    if (data.pipelineId) payload.pipeline_id = data.pipelineId;
+    if (data.pipelineStageId) payload.pipeline_stage_id = data.pipelineStageId;
+    if (data.contactId) payload.contact_id = data.contactId;
+    if (data.monetaryValue !== undefined) payload.monetary_value = data.monetaryValue;
+    if (data.status) payload.status = data.status;
+    if (data.source) payload.source = data.source;
+    if (data.assignedTo) payload.assigned_to = data.assignedTo;
+
     return this.request<{ opportunity: GHLOpportunity }>(
       `/opportunities/${opportunityId}`,
       {
         method: 'PUT',
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       }
     );
   }

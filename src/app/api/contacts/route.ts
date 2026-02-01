@@ -6,15 +6,14 @@ import { CreateContactPayload } from '@/types';
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const skip = parseInt(searchParams.get('skip') || '0');
+    const limit = parseInt(searchParams.get('limit') || '100');
     const search = searchParams.get('search');
 
     let result;
     if (search) {
       result = await ghlClient.searchContacts(search, limit);
     } else {
-      result = await ghlClient.getContacts(limit, skip);
+      result = await ghlClient.getContacts(limit);
     }
 
     return NextResponse.json(result);
