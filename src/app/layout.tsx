@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DataFlow CRM | GHL + Supabase Integration",
+  title: "Flowsper | GHL + Supabase Integration",
   description: "A CRM application integrating GoHighLevel with Supabase",
 };
 

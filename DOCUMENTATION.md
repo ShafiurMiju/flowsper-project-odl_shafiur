@@ -1,4 +1,4 @@
-# DataFlow CRM - Technical Implementation Documentation
+# Flowsper - Technical Implementation Documentation
 
 **Project:** GoHighLevel + Supabase Integration  
 **Developer:** Md Shafiur Rahman  
@@ -9,7 +9,7 @@
 
 ## 1. Project Overview & Implementation Approach
 
-DataFlow CRM is a full-stack web application that integrates **GoHighLevel (GHL)** with **Supabase** as the database layer. The implementation demonstrates three core requirements:
+Flowsper is a full-stack web application that integrates **GoHighLevel (GHL)** with **Supabase** as the database layer. The implementation demonstrates three core requirements:
 
 1. **Reading from GoHighLevel** – Implemented GHL API v2 client to fetch contacts, opportunities, and pipelines
 2. **Writing to Supabase** – Built dual-write system that syncs data to PostgreSQL with automatic activity logging

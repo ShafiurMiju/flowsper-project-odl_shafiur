@@ -1,4 +1,4 @@
-# DataFlow CRM
+# Flowsper
 
 A web application integrating **GoHighLevel** with **Supabase** for managing contacts and opportunities.
 

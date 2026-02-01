@@ -29,7 +29,7 @@ export function Sidebar() {
             <RefreshCw className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="font-bold text-lg">DataFlow CRM</h1>
+            <h1 className="font-bold text-lg">Flowsper</h1>
             <p className="text-xs text-gray-400">GHL + Supabase</p>
           </div>
         </div>

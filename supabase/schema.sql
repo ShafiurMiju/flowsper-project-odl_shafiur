@@ -1,4 +1,4 @@
--- DataFlow CRM Database Schema
+-- Flowsper Database Schema
 -- Run this in your Supabase SQL Editor
 
 -- Enable UUID extension
