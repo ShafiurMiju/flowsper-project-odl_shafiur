@@ -1,9 +1,20 @@
-import { NextResponse } from 'next/server';
-import { ghlClient, supabaseAdmin, logActivity } from '@/lib';
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseAdmin, getGHLClientForRequest } from '@/lib';
 
 // POST /api/contacts/sync - Sync all contacts from GHL to Supabase
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    const clientResult = await getGHLClientForRequest(request);
+    
+    if (clientResult.error) {
+      return NextResponse.json(
+        { error: clientResult.error },
+        { status: clientResult.status || 500 }
+      );
+    }
+
+    const { ghlClient, subAccount, authUser } = clientResult;
+
     // Fetch contacts from GHL
     const { contacts } = await ghlClient.getContacts(100, 0);
 
@@ -12,9 +23,10 @@ export async function POST() {
 
     for (const contact of contacts) {
       try {
-        // Upsert contact in Supabase
+        // Upsert contact in Supabase with sub_account_id
         const { error } = await supabaseAdmin.from('contacts').upsert(
           {
+            sub_account_id: subAccount!.id,
             ghl_id: contact.id,
             first_name: contact.firstName || null,
             last_name: contact.lastName || null,
@@ -25,7 +37,7 @@ export async function POST() {
             source: contact.source || null,
             synced_at: new Date().toISOString(),
           },
-          { onConflict: 'ghl_id' }
+          { onConflict: 'sub_account_id,ghl_id' }
         );
 
         if (error) {
@@ -41,7 +53,9 @@ export async function POST() {
     }
 
     // Log sync activity
-    await logActivity({
+    await supabaseAdmin.from('activity_logs').insert({
+      sub_account_id: subAccount!.id,
+      user_id: authUser!.id,
       action: 'sync',
       entity_type: 'contact',
       entity_id: 'bulk',

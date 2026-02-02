@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ghlClient, supabaseAdmin, logActivity } from '@/lib';
+import { supabaseAdmin, getGHLClientForRequest } from '@/lib';
 import { CreateContactPayload } from '@/types';
 
 // GET /api/contacts - List contacts from GHL
 export async function GET(request: NextRequest) {
   try {
+    const clientResult = await getGHLClientForRequest(request);
+    
+    if (clientResult.error) {
+      return NextResponse.json(
+        { error: clientResult.error },
+        { status: clientResult.status || 500 }
+      );
+    }
+
+    const { ghlClient, subAccount } = clientResult;
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get('limit') || '100');
     const search = searchParams.get('search');
@@ -29,14 +39,25 @@ export async function GET(request: NextRequest) {
 // POST /api/contacts - Create a new contact
 export async function POST(request: NextRequest) {
   try {
+    const clientResult = await getGHLClientForRequest(request);
+    
+    if (clientResult.error) {
+      return NextResponse.json(
+        { error: clientResult.error },
+        { status: clientResult.status || 500 }
+      );
+    }
+
+    const { ghlClient, subAccount } = clientResult;
     const body: CreateContactPayload = await request.json();
 
     // Create contact in GHL
     const result = await ghlClient.createContact(body);
     const contact = result.contact;
 
-    // Sync to Supabase
+    // Sync to Supabase with sub_account_id
     await supabaseAdmin.from('contacts').insert({
+      sub_account_id: subAccount!.id,
       ghl_id: contact.id,
       first_name: contact.firstName || null,
       last_name: contact.lastName || null,
@@ -48,7 +69,9 @@ export async function POST(request: NextRequest) {
     });
 
     // Log activity
-    await logActivity({
+    await supabaseAdmin.from('activity_logs').insert({
+      sub_account_id: subAccount!.id,
+      user_id: clientResult.authUser!.id,
       action: 'create',
       entity_type: 'contact',
       entity_id: contact.id,

@@ -1,9 +1,20 @@
-import { NextResponse } from 'next/server';
-import { ghlClient, supabaseAdmin, logActivity } from '@/lib';
+import { NextRequest, NextResponse } from 'next/server';
+import { supabaseAdmin, getGHLClientForRequest } from '@/lib';
 
 // POST /api/opportunities/sync - Sync all opportunities from GHL to Supabase
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    const clientResult = await getGHLClientForRequest(request);
+    
+    if (clientResult.error) {
+      return NextResponse.json(
+        { error: clientResult.error },
+        { status: clientResult.status || 500 }
+      );
+    }
+
+    const { ghlClient, subAccount, authUser } = clientResult;
+
     // Fetch opportunities from GHL
     const { opportunities } = await ghlClient.getOpportunities(undefined, 100);
 
@@ -15,6 +26,7 @@ export async function POST() {
         // Upsert opportunity in Supabase
         const { error } = await supabaseAdmin.from('opportunities').upsert(
           {
+            sub_account_id: subAccount!.id,
             ghl_id: opportunity.id,
             name: opportunity.name,
             monetary_value: opportunity.monetaryValue || null,
@@ -40,7 +52,9 @@ export async function POST() {
     }
 
     // Log sync activity
-    await logActivity({
+    await supabaseAdmin.from('activity_logs').insert({
+      sub_account_id: subAccount!.id,
+      user_id: authUser!.id,
       action: 'sync',
       entity_type: 'opportunity',
       entity_id: 'bulk',

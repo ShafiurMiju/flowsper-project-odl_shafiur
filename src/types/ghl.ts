@@ -117,3 +117,58 @@ export interface GHLOpportunitiesResponse {
 export interface GHLPipelinesResponse {
   pipelines: GHLPipeline[];
 }
+
+// GHL Conversation Types
+export interface GHLMessage {
+  id: string;
+  conversationId: string;
+  locationId: string;
+  contactId: string;
+  body: string;
+  type: 'SMS' | 'Email' | 'GMB' | 'IG' | 'FB' | 'WhatsApp' | 'Live_Chat' | 'Custom';
+  direction: 'inbound' | 'outbound';
+  status: 'pending' | 'scheduled' | 'sent' | 'delivered' | 'read' | 'failed' | 'undelivered';
+  contentType?: string;
+  attachments?: string[];
+  userId?: string;
+  dateAdded: string;
+  meta?: Record<string, unknown>;
+}
+
+export interface GHLConversation {
+  id: string;
+  locationId: string;
+  contactId: string;
+  type: 'SMS' | 'Email' | 'GMB' | 'IG' | 'FB' | 'WhatsApp' | 'Live_Chat' | 'Custom';
+  unreadCount: number;
+  lastMessageDate: string;
+  lastMessageBody?: string;
+  lastMessageType?: string;
+  starred?: boolean;
+  deleted?: boolean;
+  contact?: GHLContact;
+  fullName?: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface CreateMessagePayload {
+  type: 'SMS' | 'Email' | 'WhatsApp';
+  contactId: string;
+  message?: string;
+  subject?: string; // For email
+  html?: string; // For email
+  attachments?: string[];
+  conversationId?: string;
+}
+
+export interface GHLConversationsResponse {
+  conversations: GHLConversation[];
+  total?: number;
+}
+
+export interface GHLMessagesResponse {
+  messages: GHLMessage[];
+  total?: number;
+}

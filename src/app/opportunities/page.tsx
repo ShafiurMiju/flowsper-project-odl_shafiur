@@ -25,7 +25,10 @@ export default function OpportunitiesPage() {
 
   const fetchPipelines = async () => {
     try {
-      const res = await fetch('/api/pipelines');
+      const token = localStorage.getItem('access_token');
+      const res = await fetch('/api/pipelines', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
       setPipelines(data.pipelines || []);
       if (data.pipelines?.length > 0 && !selectedPipeline) {
@@ -38,7 +41,10 @@ export default function OpportunitiesPage() {
 
   const fetchContacts = async () => {
     try {
-      const res = await fetch('/api/contacts?limit=100');
+      const token = localStorage.getItem('access_token');
+      const res = await fetch('/api/contacts?limit=100', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
       setContacts(data.contacts || []);
     } catch (error) {
@@ -49,10 +55,13 @@ export default function OpportunitiesPage() {
   const fetchOpportunities = useCallback(async () => {
     setLoading(true);
     try {
+      const token = localStorage.getItem('access_token');
       const url = selectedPipeline
         ? `/api/opportunities?pipelineId=${selectedPipeline}&limit=50`
         : '/api/opportunities?limit=50';
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
       setOpportunities(data.opportunities || []);
     } catch (error) {
@@ -76,7 +85,11 @@ export default function OpportunitiesPage() {
   const syncOpportunities = async () => {
     setSyncing(true);
     try {
-      await fetch('/api/opportunities/sync', { method: 'POST' });
+      const token = localStorage.getItem('access_token');
+      await fetch('/api/opportunities/sync', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
       await fetchOpportunities();
     } catch (error) {
       console.error('Error syncing opportunities:', error);
@@ -86,9 +99,13 @@ export default function OpportunitiesPage() {
   };
 
   const handleCreateOpportunity = async (data: CreateOpportunityPayload) => {
+    const token = localStorage.getItem('access_token');
     const res = await fetch('/api/opportunities', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify(data),
     });
 
@@ -99,9 +116,13 @@ export default function OpportunitiesPage() {
   const handleUpdateOpportunity = async (data: CreateOpportunityPayload) => {
     if (!editingOpportunity) return;
 
+    const token = localStorage.getItem('access_token');
     const res = await fetch(`/api/opportunities/${editingOpportunity.id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify(data),
     });
 
@@ -114,8 +135,10 @@ export default function OpportunitiesPage() {
     if (!confirm('Are you sure you want to delete this opportunity?')) return;
 
     try {
+      const token = localStorage.getItem('access_token');
       const res = await fetch(`/api/opportunities/${opportunityId}`, {
         method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!res.ok) throw new Error('Failed to delete opportunity');
@@ -130,9 +153,13 @@ export default function OpportunitiesPage() {
     newStageId: string
   ) => {
     try {
+      const token = localStorage.getItem('access_token');
       const res = await fetch(`/api/opportunities/${opportunityId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ pipelineStageId: newStageId }),
       });
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ghlClient, supabaseAdmin, logActivity } from '@/lib';
+import { supabaseAdmin, getGHLClientForRequest } from '@/lib';
 import { CreateContactPayload } from '@/types';
 
 interface RouteParams {
@@ -9,6 +9,16 @@ interface RouteParams {
 // GET /api/contacts/[id] - Get a single contact
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    const clientResult = await getGHLClientForRequest(request);
+    
+    if (clientResult.error) {
+      return NextResponse.json(
+        { error: clientResult.error },
+        { status: clientResult.status || 500 }
+      );
+    }
+
+    const { ghlClient } = clientResult;
     const { id } = await params;
     const result = await ghlClient.getContact(id);
     return NextResponse.json(result);
@@ -24,6 +34,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 // PUT /api/contacts/[id] - Update a contact
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
+    const clientResult = await getGHLClientForRequest(request);
+    
+    if (clientResult.error) {
+      return NextResponse.json(
+        { error: clientResult.error },
+        { status: clientResult.status || 500 }
+      );
+    }
+
+    const { ghlClient, subAccount, authUser } = clientResult;
     const { id } = await params;
     const body: Partial<CreateContactPayload> = await request.json();
 
@@ -43,10 +63,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         tags: contact.tags || [],
         updated_at: new Date().toISOString(),
       })
-      .eq('ghl_id', id);
+      .eq('ghl_id', id)
+      .eq('sub_account_id', subAccount!.id);
 
     // Log activity
-    await logActivity({
+    await supabaseAdmin.from('activity_logs').insert({
+      sub_account_id: subAccount!.id,
+      user_id: authUser!.id,
       action: 'update',
       entity_type: 'contact',
       entity_id: id,
@@ -67,6 +90,16 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 // DELETE /api/contacts/[id] - Delete a contact
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
+    const clientResult = await getGHLClientForRequest(request);
+    
+    if (clientResult.error) {
+      return NextResponse.json(
+        { error: clientResult.error },
+        { status: clientResult.status || 500 }
+      );
+    }
+
+    const { ghlClient, subAccount, authUser } = clientResult;
     const { id } = await params;
 
     // Get contact info before deletion for logging
@@ -82,10 +115,16 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const result = await ghlClient.deleteContact(id);
 
     // Delete from Supabase
-    await supabaseAdmin.from('contacts').delete().eq('ghl_id', id);
+    await supabaseAdmin
+      .from('contacts')
+      .delete()
+      .eq('ghl_id', id)
+      .eq('sub_account_id', subAccount!.id);
 
     // Log activity
-    await logActivity({
+    await supabaseAdmin.from('activity_logs').insert({
+      sub_account_id: subAccount!.id,
+      user_id: authUser!.id,
       action: 'delete',
       entity_type: 'contact',
       entity_id: id,

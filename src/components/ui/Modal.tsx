@@ -54,14 +54,14 @@ export function Modal({
 
         {/* Modal */}
         <div
-          className={`relative w-full ${sizeStyles[size]} bg-white rounded-xl shadow-xl transform transition-all`}
+          className={`relative w-full ${sizeStyles[size]} bg-gray-800 rounded-xl shadow-xl transform transition-all border border-gray-700`}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b">
-            <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+            <h3 className="text-lg font-semibold text-white">{title}</h3>
             <button
               onClick={onClose}
-              className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+              className="p-1 text-gray-400 hover:text-gray-200 rounded-lg hover:bg-gray-700"
             >
               <X className="w-5 h-5" />
             </button>

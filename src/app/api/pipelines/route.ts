@@ -1,9 +1,19 @@
-import { NextResponse } from 'next/server';
-import { ghlClient } from '@/lib';
+import { NextRequest, NextResponse } from 'next/server';
+import { getGHLClientForRequest } from '@/lib';
 
 // GET /api/pipelines - Get all pipelines from GHL
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const clientResult = await getGHLClientForRequest(request);
+    
+    if (clientResult.error) {
+      return NextResponse.json(
+        { error: clientResult.error },
+        { status: clientResult.status || 500 }
+      );
+    }
+
+    const { ghlClient } = clientResult;
     const result = await ghlClient.getPipelines();
     return NextResponse.json(result);
   } catch (error) {

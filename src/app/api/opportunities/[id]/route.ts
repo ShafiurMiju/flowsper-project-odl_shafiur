@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ghlClient, supabaseAdmin, logActivity } from '@/lib';
+import { supabaseAdmin, getGHLClientForRequest } from '@/lib';
 import { CreateOpportunityPayload } from '@/types';
 
 interface RouteParams {
@@ -9,6 +9,16 @@ interface RouteParams {
 // GET /api/opportunities/[id] - Get a single opportunity
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    const clientResult = await getGHLClientForRequest(request);
+    
+    if (clientResult.error) {
+      return NextResponse.json(
+        { error: clientResult.error },
+        { status: clientResult.status || 500 }
+      );
+    }
+
+    const { ghlClient } = clientResult;
     const { id } = await params;
     const result = await ghlClient.getOpportunity(id);
     return NextResponse.json(result);
@@ -24,6 +34,16 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 // PUT /api/opportunities/[id] - Update an opportunity
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
+    const clientResult = await getGHLClientForRequest(request);
+    
+    if (clientResult.error) {
+      return NextResponse.json(
+        { error: clientResult.error },
+        { status: clientResult.status || 500 }
+      );
+    }
+
+    const { ghlClient, subAccount, authUser } = clientResult;
     const { id } = await params;
     const body: Partial<CreateOpportunityPayload> = await request.json();
 
@@ -45,10 +65,13 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
         status: opportunity.status,
         updated_at: new Date().toISOString(),
       })
-      .eq('ghl_id', id);
+      .eq('ghl_id', id)
+      .eq('sub_account_id', subAccount!.id);
 
     // Log activity
-    await logActivity({
+    await supabaseAdmin.from('activity_logs').insert({
+      sub_account_id: subAccount!.id,
+      user_id: authUser!.id,
       action: isMove ? 'move' : 'update',
       entity_type: 'opportunity',
       entity_id: id,
@@ -71,6 +94,16 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 // DELETE /api/opportunities/[id] - Delete an opportunity
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
+    const clientResult = await getGHLClientForRequest(request);
+    
+    if (clientResult.error) {
+      return NextResponse.json(
+        { error: clientResult.error },
+        { status: clientResult.status || 500 }
+      );
+    }
+
+    const { ghlClient, subAccount, authUser } = clientResult;
     const { id } = await params;
 
     // Get opportunity info before deletion for logging
@@ -86,10 +119,16 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const result = await ghlClient.deleteOpportunity(id);
 
     // Delete from Supabase
-    await supabaseAdmin.from('opportunities').delete().eq('ghl_id', id);
+    await supabaseAdmin
+      .from('opportunities')
+      .delete()
+      .eq('ghl_id', id)
+      .eq('sub_account_id', subAccount!.id);
 
     // Log activity
-    await logActivity({
+    await supabaseAdmin.from('activity_logs').insert({
+      sub_account_id: subAccount!.id,
+      user_id: authUser!.id,
       action: 'delete',
       entity_type: 'opportunity',
       entity_id: id,

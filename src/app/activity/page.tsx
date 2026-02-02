@@ -30,11 +30,14 @@ export default function ActivityPage() {
   const fetchLogs = async () => {
     setLoading(true);
     try {
+      const token = localStorage.getItem('access_token');
       const url =
         filter === 'all'
           ? '/api/activity?limit=100'
           : `/api/activity?limit=100&entityType=${filter}`;
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
       setLogs(data.logs || []);
     } catch (error) {

@@ -17,10 +17,13 @@ export default function ContactsPage() {
   const fetchContacts = useCallback(async () => {
     setLoading(true);
     try {
+      const token = localStorage.getItem('access_token');
       const url = search
         ? `/api/contacts?search=${encodeURIComponent(search)}`
         : '/api/contacts?limit=50';
-      const res = await fetch(url);
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await res.json();
       setContacts(data.contacts || []);
     } catch (error) {
@@ -40,7 +43,11 @@ export default function ContactsPage() {
   const syncContacts = async () => {
     setSyncing(true);
     try {
-      await fetch('/api/contacts/sync', { method: 'POST' });
+      const token = localStorage.getItem('access_token');
+      await fetch('/api/contacts/sync', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
       await fetchContacts();
     } catch (error) {
       console.error('Error syncing contacts:', error);
@@ -50,9 +57,13 @@ export default function ContactsPage() {
   };
 
   const handleCreateContact = async (data: CreateContactPayload) => {
+    const token = localStorage.getItem('access_token');
     const res = await fetch('/api/contacts', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify(data),
     });
 
@@ -63,9 +74,13 @@ export default function ContactsPage() {
   const handleUpdateContact = async (data: CreateContactPayload) => {
     if (!editingContact) return;
 
+    const token = localStorage.getItem('access_token');
     const res = await fetch(`/api/contacts/${editingContact.id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify(data),
     });
 
@@ -78,8 +93,10 @@ export default function ContactsPage() {
     if (!confirm('Are you sure you want to delete this contact?')) return;
 
     try {
+      const token = localStorage.getItem('access_token');
       const res = await fetch(`/api/contacts/${contactId}`, {
         method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!res.ok) throw new Error('Failed to delete contact');

@@ -5,20 +5,28 @@ import {
   GHLOpportunitiesResponse,
   GHLPipelinesResponse,
   CreateContactPayload,
-  UpdateContactPayload,
   CreateOpportunityPayload,
-  UpdateOpportunityPayload,
+  GHLConversation,
+  GHLConversationsResponse,
+  GHLMessage,
+  GHLMessagesResponse,
+  CreateMessagePayload,
 } from '@/types';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
 
+/**
+ * Multi-tenant GHL Client
+ * Now accepts apiKey and locationId per request instead of using env vars
+ */
 class GHLClient {
   private apiKey: string;
   private locationId: string;
 
-  constructor() {
-    this.apiKey = process.env.GHL_API_KEY || '';
-    this.locationId = process.env.GHL_LOCATION_ID || '';
+  constructor(apiKey?: string, locationId?: string) {
+    // Fallback to env vars for backward compatibility
+    this.apiKey = apiKey || process.env.GHL_API_KEY || '';
+    this.locationId = locationId || process.env.GHL_LOCATION_ID || '';
 
     if (!this.apiKey || !this.locationId) {
       console.warn('GHL API Key or Location ID not configured');
@@ -194,12 +202,131 @@ class GHLClient {
     );
   }
 
+  // ==================== CONVERSATIONS ====================
+
+  async getConversations(limit = 100, query?: string): Promise<GHLConversationsResponse> {
+    let url = `/conversations/search?locationId=${this.locationId}&limit=${limit}`;
+    if (query) {
+      url += `&query=${encodeURIComponent(query)}`;
+    }
+    return this.request<GHLConversationsResponse>(url);
+  }
+
+  async getConversation(conversationId: string): Promise<{ conversation: GHLConversation }> {
+    return this.request<{ conversation: GHLConversation }>(
+      `/conversations/${conversationId}`
+    );
+  }
+
+  async getConversationMessages(
+    conversationId: string,
+    limit = 100,
+    lastMessageId?: string
+  ): Promise<GHLMessagesResponse> {
+    let url = `/conversations/${conversationId}/messages?limit=${limit}`;
+    if (lastMessageId) {
+      url += `&lastMessageId=${lastMessageId}`;
+    }
+    return this.request<GHLMessagesResponse>(url);
+  }
+
+  async sendMessage(data: CreateMessagePayload): Promise<{ message: GHLMessage; conversation: GHLConversation }> {
+    const payload: Record<string, unknown> = {
+      type: data.type,
+      contactId: data.contactId,
+      locationId: this.locationId,
+    };
+
+    if (data.message) payload.message = data.message;
+    if (data.subject) payload.subject = data.subject;
+    if (data.html) payload.html = data.html;
+    if (data.attachments) payload.attachments = data.attachments;
+    if (data.conversationId) payload.conversationId = data.conversationId;
+
+    return this.request<{ message: GHLMessage; conversation: GHLConversation }>(
+      '/conversations/messages',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+  }
+
+  async markConversationAsRead(conversationId: string): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>(
+      `/conversations/${conversationId}/read`,
+      {
+        method: 'PUT',
+      }
+    );
+  }
+
+  async markConversationAsUnread(conversationId: string): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>(
+      `/conversations/${conversationId}/unread`,
+      {
+        method: 'PUT',
+      }
+    );
+  }
+
+  async deleteConversation(conversationId: string): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>(
+      `/conversations/${conversationId}`,
+      {
+        method: 'DELETE',
+      }
+    );
+  }
+
+  async cancelScheduledMessage(messageId: string): Promise<{ success: boolean }> {
+    return this.request<{ success: boolean }>(
+      `/conversations/messages/${messageId}/schedule`,
+      {
+        method: 'DELETE',
+      }
+    );
+  }
+
+  async uploadFile(file: File): Promise<{ url: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('locationId', this.locationId);
+
+    const response = await fetch(`${GHL_API_BASE}/medias/upload-file`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Version': '2021-07-28',
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`File upload failed: ${response.status} - ${errorText}`);
+    }
+
+    return response.json();
+  }
+
   // ==================== UTILITY ====================
 
   getLocationId(): string {
     return this.locationId;
   }
+
+  getApiKey(): string {
+    return this.apiKey;
+  }
 }
 
-// Export a singleton instance
+/**
+ * Create a GHL client for a specific sub-account
+ */
+export function createGHLClient(apiKey: string, locationId: string): GHLClient {
+  return new GHLClient(apiKey, locationId);
+}
+
+// Export a singleton instance for backward compatibility (uses env vars)
 export const ghlClient = new GHLClient();
