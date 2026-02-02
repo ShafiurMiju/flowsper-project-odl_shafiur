@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button, Card, CardHeader, Input } from '@/components/ui';
 import { ContactCard, ContactForm } from '@/components/contacts';
 import { GHLContact, CreateContactPayload } from '@/types';
-import { Plus, RefreshCw, Search } from 'lucide-react';
+import { Plus, RefreshCw, Search, Download, Upload } from 'lucide-react';
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<GHLContact[]>([]);
@@ -13,6 +13,7 @@ export default function ContactsPage() {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingContact, setEditingContact] = useState<GHLContact | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchContacts = useCallback(async () => {
     setLoading(true);
@@ -110,6 +111,124 @@ export default function ContactsPage() {
     setEditingContact(contact);
   };
 
+  const handleExportContacts = () => {
+    if (contacts.length === 0) {
+      alert('No contacts to export');
+      return;
+    }
+
+    // Prepare CSV data
+    const headers = ['First Name', 'Last Name', 'Email', 'Phone', 'Company', 'Tags', 'Source'];
+    const csvRows = [
+      headers.join(','),
+      ...contacts.map((contact) =>
+        [
+          contact.firstName || '',
+          contact.lastName || '',
+          contact.email || '',
+          contact.phone || '',
+          contact.companyName || '',
+          (contact.tags || []).join(';'),
+          contact.source || '',
+        ]
+          .map((field) => `"${String(field).replace(/"/g, '""')}"`) // Escape quotes
+          .join(',')
+      ),
+    ];
+
+    // Create and download file
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `contacts_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleImportContacts = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const text = e.target?.result as string;
+        const rows = text.split('\n').filter((row) => row.trim());
+        
+        if (rows.length < 2) {
+          alert('CSV file is empty or invalid');
+          return;
+        }
+
+        // Skip header row
+        const dataRows = rows.slice(1);
+        const token = localStorage.getItem('access_token');
+        let successCount = 0;
+        let errorCount = 0;
+
+        for (const row of dataRows) {
+          // Parse CSV row (simple parser - handles quoted fields)
+          const fields = row.match(/("[^"]*"|[^,]+)/g)?.map((field) =>
+            field.replace(/^"|"$/g, '').replace(/""/g, '"')
+          ) || [];
+
+          const [firstName, lastName, email, phone, companyName, tagsStr, source] = fields;
+
+          if (!email && !phone) {
+            errorCount++;
+            continue; // Skip rows without email or phone
+          }
+
+          try {
+            const contactData: CreateContactPayload = {
+              firstName: firstName?.trim() || undefined,
+              lastName: lastName?.trim() || undefined,
+              email: email?.trim() || undefined,
+              phone: phone?.trim() || undefined,
+              companyName: companyName?.trim() || undefined,
+              tags: tagsStr ? tagsStr.split(';').map((t) => t.trim()).filter(Boolean) : undefined,
+              source: source?.trim() || 'imported',
+            };
+
+            const res = await fetch('/api/contacts', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify(contactData),
+            });
+
+            if (res.ok) {
+              successCount++;
+            } else {
+              errorCount++;
+            }
+          } catch (error) {
+            errorCount++;
+          }
+        }
+
+        alert(`Import complete!\nSuccess: ${successCount}\nFailed: ${errorCount}`);
+        await fetchContacts();
+      } catch (error) {
+        console.error('Error importing contacts:', error);
+        alert('Failed to import contacts. Please check the file format.');
+      } finally {
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
+    };
+
+    reader.readAsText(file);
+  };
+
   return (
     <div>
       {/* Header */}
@@ -121,6 +240,24 @@ export default function ContactsPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Button variant="secondary" onClick={handleExportContacts}>
+            <Download className="w-4 h-4 mr-2" />
+            Export
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            Import
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            onChange={handleImportContacts}
+            className="hidden"
+          />
           <Button variant="secondary" onClick={syncContacts} loading={syncing}>
             <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
             Sync

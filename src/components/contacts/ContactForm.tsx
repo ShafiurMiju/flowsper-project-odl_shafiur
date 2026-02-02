@@ -20,6 +20,8 @@ export function ContactForm({
   mode,
 }: ContactFormProps) {
   const [loading, setLoading] = useState(false);
+  const [enableTags, setEnableTags] = useState(false);
+  const [tagInput, setTagInput] = useState('');
   const [formData, setFormData] = useState<CreateContactPayload>({
     firstName: initialData?.firstName || '',
     lastName: initialData?.lastName || '',
@@ -27,10 +29,28 @@ export function ContactForm({
     phone: initialData?.phone || '',
     companyName: initialData?.companyName || '',
     source: initialData?.source || 'dataflow-crm',
+    tags: initialData?.tags || [],
   });
 
   const handleChange = (field: keyof CreateContactPayload, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleAddTag = () => {
+    if (tagInput.trim() && !formData.tags?.includes(tagInput.trim())) {
+      setFormData((prev) => ({
+        ...prev,
+        tags: [...(prev.tags || []), tagInput.trim()],
+      }));
+      setTagInput('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      tags: prev.tags?.filter((tag) => tag !== tagToRemove) || [],
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -99,6 +119,65 @@ export function ContactForm({
           onChange={(e) => handleChange('companyName', e.target.value)}
           placeholder="Acme Inc."
         />
+
+        {/* Tags Section */}
+        <div className="border-t pt-4">
+          <div className="flex items-center gap-2 mb-3">
+            <input
+              type="checkbox"
+              id="enable-tags"
+              checked={enableTags}
+              onChange={(e) => setEnableTags(e.target.checked)}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <label htmlFor="enable-tags" className="text-sm font-medium text-gray-700">
+              Add Tags
+            </label>
+          </div>
+
+          {enableTags && (
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddTag();
+                    }
+                  }}
+                  placeholder="Enter tag and press Enter"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                />
+                <Button type="button" onClick={handleAddTag} variant="secondary">
+                  Add
+                </Button>
+              </div>
+
+              {formData.tags && formData.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {formData.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveTag(tag)}
+                        className="hover:text-blue-900"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         <div className="flex justify-end gap-3 pt-4 border-t">
           <Button variant="secondary" onClick={onClose}>
