@@ -538,10 +538,16 @@ export class GHLClient {
    * Get phone numbers for a location using Phone System API
    * @see https://marketplace.gohighlevel.com/docs/ghl/phone-system/active-numbers
    */
+  /**
+   * Get phone numbers for location using Phone System API
+   * @see https://marketplace.gohighlevel.com/docs/ghl/phone-system/active-numbers
+   */
   async getPhoneNumbers(): Promise<GHLPhoneNumbersResponse> {
+    console.log('📞 getPhoneNumbers called for locationId:', this.locationId);
     const response = await this.request<{ numbers: GHLPhoneNumber[] }>(
       `/phone-system/numbers/location/${this.locationId}?pageSize=1000&skipNumberPool=false`
     );
+    console.log('📞 Raw GHL response:', JSON.stringify(response, null, 2));
     return {
       phoneNumbers: response.numbers || [],
       total: response.numbers?.length || 0,

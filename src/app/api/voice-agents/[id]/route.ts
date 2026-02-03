@@ -47,18 +47,45 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const body = await request.json();
 
-    const result = await ghlClient.updateVoiceAgent(id, body);
+    // Remove fields not accepted by GHL API during update
+    const { knowledgeBaseId, llmModel, voiceId, ...rawPayload } = body;
 
-    // Log activity
-    await supabaseAdmin.from('activity_logs').insert({
-      sub_account_id: subAccount!.id,
-      user_id: authUser!.id,
-      action: 'update',
-      entity_type: 'contact' as const,
-      entity_id: id,
-      entity_name: `Voice Agent: ${result.agent.name}`,
-      details: body,
+    // Clean up the payload - remove empty strings and undefined values
+    // For phone numbers, always include inboundNumbers as array (GHL expects array, not string)
+    const updatePayload: any = {};
+    
+    Object.keys(rawPayload).forEach(key => {
+      const value = rawPayload[key];
+      // Always include inboundNumbers even if empty array (to clear phone numbers)
+      if (key === 'inboundNumbers') {
+        updatePayload[key] = Array.isArray(value) ? value : [];
+      }
+      // Skip the old inboundNumber string field
+      else if (key === 'inboundNumber') {
+        // Don't include it - we're using inboundNumbers array instead
+      }
+      // Only include other non-empty values
+      else if (value !== '' && value !== null && value !== undefined) {
+        updatePayload[key] = value;
+      }
     });
+
+    console.log('📝 Update payload for agent:', id, JSON.stringify(updatePayload, null, 2));
+
+    const result = await ghlClient.updateVoiceAgent(id, updatePayload);
+
+    // Log activity if we have sub-account and user
+    if (subAccount && authUser && result) {
+      await supabaseAdmin.from('activity_logs').insert({
+        sub_account_id: subAccount.id,
+        user_id: authUser.id,
+        action: 'update',
+        entity_type: 'contact' as const,
+        entity_id: id,
+        entity_name: `Voice Agent: ${result.agentName || body.agentName || 'Unknown'}`,
+        details: body,
+      });
+    }
 
     return NextResponse.json(result);
   } catch (error) {
@@ -87,16 +114,18 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     await ghlClient.deleteVoiceAgent(id);
 
-    // Log activity
-    await supabaseAdmin.from('activity_logs').insert({
-      sub_account_id: subAccount!.id,
-      user_id: authUser!.id,
-      action: 'delete',
-      entity_type: 'contact' as const,
-      entity_id: id,
-      entity_name: 'Voice Agent',
-      details: {},
-    });
+    // Log activity if we have sub-account and user
+    if (subAccount && authUser) {
+      await supabaseAdmin.from('activity_logs').insert({
+        sub_account_id: subAccount.id,
+        user_id: authUser.id,
+        action: 'delete',
+        entity_type: 'contact' as const,
+        entity_id: id,
+        entity_name: 'Voice Agent',
+        details: {},
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

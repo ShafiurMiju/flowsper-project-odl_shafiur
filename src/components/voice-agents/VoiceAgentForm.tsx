@@ -71,6 +71,7 @@ export function VoiceAgentForm({
   const [step, setStep] = useState(1);
   const [phoneNumbers, setPhoneNumbers] = useState<Array<{ value: string; label: string }>>([]);
   const [loadingPhones, setLoadingPhones] = useState(false);
+  const [initialized, setInitialized] = useState(false);
   const [formData, setFormData] = useState<CreateVoiceAgentPayload>({
     agentName: '',
     businessName: '',
@@ -86,6 +87,7 @@ export function VoiceAgentForm({
     sendUserIdleReminders: true,
     reminderAfterIdleTimeSeconds: 8,
     isAgentAsBackupDisabled: false,
+    inboundNumber: '',
     sendPostCallNotificationTo: {
       admins: false,
       allUsers: true,
@@ -98,12 +100,39 @@ export function VoiceAgentForm({
       language: 'es',
     },
   });
+  const [selectedPhoneNumbers, setSelectedPhoneNumbers] = useState<string[]>([]);
 
+  // Initialize form data only once when modal opens
   useEffect(() => {
-    if (initialData) {
-      setFormData(prev => ({ ...prev, ...initialData }));
+    if (isOpen && !initialized) {
+      if (initialData) {
+        console.log('📋 Initial data received:', initialData);
+        console.log('📞 inboundNumber from initialData:', initialData.inboundNumber);
+        
+        setFormData(prev => ({ ...prev, ...initialData }));
+        
+        // Parse selected phone numbers from inboundNumber or inboundNumbers
+        let numbers: string[] = [];
+        
+        if (initialData.inboundNumber) {
+          // If it's a comma-separated list, split it
+          numbers = initialData.inboundNumber.includes(',') 
+            ? initialData.inboundNumber.split(',').map(n => n.trim())
+            : [initialData.inboundNumber];
+        }
+        
+        console.log('📞 Parsed phone numbers for editing:', numbers);
+        setSelectedPhoneNumbers(numbers);
+      }
+      setInitialized(true);
     }
-  }, [initialData]);
+    
+    // Reset when modal closes
+    if (!isOpen && initialized) {
+      setInitialized(false);
+      setStep(1);
+    }
+  }, [isOpen, initialData, initialized]);
 
   // Fetch phone numbers when reaching step 3
   useEffect(() => {
@@ -117,21 +146,28 @@ export function VoiceAgentForm({
     setLoadingPhones(true);
     try {
       const token = localStorage.getItem('access_token');
+      console.log('📞 Fetching phone numbers...');
       const response = await fetch('/api/phone-numbers', {
         headers: { Authorization: `Bearer ${token}` },
       });
+      
+      console.log('📞 Response status:', response.status);
       const data = await response.json();
+      console.log('📞 Response data:', data);
+      
       if (data.phoneNumbers && data.phoneNumbers.length > 0) {
         const numbers = data.phoneNumbers.map((phone: { phoneNumber: string; friendlyName?: string }) => ({
           value: phone.phoneNumber,
           label: phone.friendlyName || phone.phoneNumber,
         }));
+        console.log('📞 Mapped phone numbers:', numbers);
         setPhoneNumbers(numbers);
       } else {
+        console.log('📞 No phone numbers in response');
         setPhoneNumbers([]);
       }
     } catch (error) {
-      console.error('Failed to fetch phone numbers:', error);
+      console.error('📞 Failed to fetch phone numbers:', error);
       setPhoneNumbers([]);
     } finally {
       setLoadingPhones(false);
@@ -165,21 +201,131 @@ export function VoiceAgentForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    
+    // Only allow submission on step 3
+    if (step !== 3) {
+      console.log('Form submission prevented - not on step 3');
+      return;
+    }
+    
+    // Prevent double submission
+    if (loading) {
+      console.log('Form submission prevented - already loading');
+      return;
+    }
     
     if (!formData.agentName?.trim()) {
       alert('Agent name is required');
       return;
     }
 
+    console.log('💾 Submitting form with selectedPhoneNumbers:', selectedPhoneNumbers);
+    console.log('💾 formData.inboundNumber before submit:', formData.inboundNumber);
+
     setLoading(true);
     try {
       await onSubmit(formData);
-      onClose();
+      // Reset form and close modal on success
       setStep(1);
+      onClose();
     } catch (error) {
       console.error('Error submitting voice agent:', error);
-      alert('Failed to save voice agent');
+      alert('Failed to save voice agent. Please try again.');
     } finally {
+      // Always stop loading, even if there's an error
+      setLoading(false);
+    }
+  };
+
+  const handlePhoneNumberAdd = (phoneNumber: string) => {
+    if (!phoneNumber || selectedPhoneNumbers.includes(phoneNumber)) return;
+    
+    // Max 5 phone numbers
+    if (selectedPhoneNumbers.length >= 5) {
+      alert('Maximum 5 phone numbers can be selected');
+      return;
+    }
+    
+    const newNumbers = [...selectedPhoneNumbers, phoneNumber];
+    setSelectedPhoneNumbers(newNumbers);
+    // Update formData with comma-separated list
+    handleChange('inboundNumber', newNumbers.join(','));
+  };
+
+  const handlePhoneNumberRemove = (phoneNumber: string) => {
+    const newNumbers = selectedPhoneNumbers.filter(num => num !== phoneNumber);
+    console.log('🗑️ Removing phone number:', phoneNumber);
+    console.log('🗑️ New phone numbers array:', newNumbers);
+    setSelectedPhoneNumbers(newNumbers);
+    // Update formData with comma-separated list (or empty string if no numbers)
+    const newValue = newNumbers.join(',');
+    console.log('🗑️ Setting inboundNumber to:', newValue);
+    handleChange('inboundNumber', newValue);
+  };
+
+  const handleManualPhoneAdd = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const input = e.currentTarget;
+      const phoneNumber = input.value.trim();
+      if (phoneNumber) {
+        handlePhoneNumberAdd(phoneNumber);
+        input.value = '';
+      }
+    }
+  };
+
+  const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    // Completely prevent Enter key from doing anything in the form
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }
+  };
+
+  const handleButtonClick = async () => {
+    // Only allow submission on step 3
+    if (step !== 3) {
+      console.log('Button click prevented - not on step 3');
+      return;
+    }
+    
+    // Prevent double submission
+    if (loading) {
+      console.log('Button click prevented - already loading');
+      return;
+    }
+    
+    if (!formData.agentName?.trim()) {
+      alert('Agent name is required');
+      return;
+    }
+
+    console.log('💾 Submitting form with selectedPhoneNumbers:', selectedPhoneNumbers);
+    console.log('💾 formData.inboundNumber before submit:', formData.inboundNumber);
+
+    // Prepare payload with inboundNumbers as array (not inboundNumber as string)
+    const payload = {
+      ...formData,
+      inboundNumbers: selectedPhoneNumbers, // GHL expects array
+      inboundNumber: undefined, // Remove the string version
+    };
+    
+    console.log('💾 Final payload with inboundNumbers array:', payload);
+
+    setLoading(true);
+    try {
+      await onSubmit(payload);
+      // Reset form and close modal on success
+      setStep(1);
+      onClose();
+    } catch (error) {
+      console.error('Error submitting voice agent:', error);
+      alert('Failed to save voice agent. Please try again.');
+    } finally {
+      // Always stop loading, even if there's an error
       setLoading(false);
     }
   };
@@ -193,7 +339,7 @@ export function VoiceAgentForm({
       onClose={onClose} 
       title={mode === 'create' ? 'Create Voice Agent' : 'Edit Voice Agent'}
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={(e) => e.preventDefault()} onKeyDown={handleFormKeyDown} className="space-y-4">
         {/* Progress Steps */}
         <div className="flex items-center justify-between mb-6">
           {[1, 2, 3].map((s) => (
@@ -353,43 +499,22 @@ export function VoiceAgentForm({
                 onChange={(e) => handleChange('agentPrompt', e.target.value)}
                 placeholder="AGENT ROLE & OBJECTIVE:
 
-Introduction: You are My Agent 508, a dedicated Customer Support Specialist at 'Octopi Digital', focused on assisting my clients.
+Introduction: You are My Agent, a dedicated Customer Support Specialist at your company, focused on assisting clients.
 
-Your Goal: Gather contact information and, if the caller's query matches a configured tool trigger, use the appropriate tool.
-
-
-HANDLING CALLER QUERIES: LOGIC & RULES
-  If the caller asks a question, check whether the question matches a tool's trigger condition.
-  1. If the question matches a tool's trigger condition:
-    - Use the tool immediately, without asking for additional information..."
-                rows={12}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white bg-gray-800 font-mono text-sm"
+Your Goal: Gather contact information and assist callers with their inquiries."
+                className="w-full h-32 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <div className="flex items-center justify-between mt-2">
-                <p className="text-xs text-gray-400">
-                  A good prompt will allow the agent to better interpret and respond appropriately.
-                  <a href="#" className="text-blue-400 hover:text-blue-300 ml-1">
-                    Prompt Guidelines
-                  </a>
-                  <a href="#" className="text-blue-400 hover:text-blue-300 ml-2">
-                    View System Prompts
-                  </a>
-                </p>
-                <p className="text-xs text-gray-400">
-                  {(formData.agentPrompt?.length || 0)} tokens
-                </p>
-              </div>
             </div>
           </div>
         )}
 
-        {/* Step 3: Phone & Settings */}
+        {/* Step 3: Phone Number */}
         {step === 3 && (
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-white">Phone & Availability</h3>
-            <p className="text-sm text-gray-300 mb-4">Select phone numbers/number pool and define working hours for your Agent</p>
+            <h3 className="text-lg font-medium text-white">Phone Number</h3>
+            <p className="text-sm text-gray-300 mb-4">Select phone numbers for your agent (Max 5)</p>
 
-            {/* Phone Numbers Dropdown */}
+            {/* Phone Number Selection */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-medium text-white">
@@ -406,23 +531,53 @@ HANDLING CALLER QUERIES: LOGIC & RULES
                   </a>
                 )}
               </div>
+
+              {/* Selected Phone Numbers Display */}
+              {selectedPhoneNumbers.length > 0 && (
+                <div className="mb-3 flex flex-wrap gap-2">
+                  {selectedPhoneNumbers.map((number) => (
+                    <div
+                      key={number}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm"
+                    >
+                      <span>{number}</span>
+                      <button
+                        type="button"
+                        onClick={() => handlePhoneNumberRemove(number)}
+                        className="hover:bg-blue-700 rounded-full p-0.5"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
               {loadingPhones ? (
                 <div className="text-sm text-gray-400">Loading phone numbers...</div>
-              ) : phoneNumbers.length > 0 ? (
+              ) : phoneNumbers.length > 0 && selectedPhoneNumbers.length < 5 ? (
                 <>
                   <Select
                     label=""
-                    value={formData.inboundNumber || ''}
-                    onChange={(e) => handleChange('inboundNumber', e.target.value)}
+                    value=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        handlePhoneNumberAdd(e.target.value);
+                        e.target.value = '';
+                      }
+                    }}
                     options={[
-                      { value: '', label: 'Please select' },
-                      ...phoneNumbers,
+                      { value: '', label: 'Select a phone number to add' },
+                      ...phoneNumbers.filter(phone => !selectedPhoneNumbers.includes(phone.value)),
                     ]}
                   />
-                  <p className="text-xs text-gray-400 mt-1">
-                    Or enter manually below
-                  </p>
                 </>
+              ) : selectedPhoneNumbers.length >= 5 ? (
+                <div className="text-sm text-gray-400 bg-gray-800 border border-gray-700 rounded-md p-3">
+                  Maximum 5 phone numbers selected
+                </div>
               ) : (
                 <div className="text-sm text-gray-400 bg-gray-800 border border-gray-700 rounded-md p-3">
                   No phone numbers available.{' '}
@@ -434,159 +589,12 @@ HANDLING CALLER QUERIES: LOGIC & RULES
                   >
                     Buy a new number
                   </a>
-                  {' '}or enter manually below.
                 </div>
               )}
-              
-              {/* Manual phone number input */}
-              <div className="mt-3">
-                <Input
-                  label="Or Enter Phone Number Manually"
-                  type="tel"
-                  value={formData.inboundNumber || ''}
-                  onChange={(e) => handleChange('inboundNumber', e.target.value)}
-                  placeholder="+1234567890"
-                />
-                <p className="text-xs text-gray-400 mt-1">
-                  Enter phone number with country code (e.g., +1234567890)
-                </p>
-              </div>
-              
+
               <p className="text-xs text-gray-400 mt-2">
                 You can select up to 5 phone numbers OR 1 number pool for each agent. Maximum 5 phone numbers can be selected.
               </p>
-            </div>
-
-            {/* Enable AI Agent as backup */}
-            <div className="border-t border-gray-700 pt-4">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={!formData.isAgentAsBackupDisabled}
-                  onChange={(e) => handleChange('isAgentAsBackupDisabled', !e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                />
-                <div>
-                  <span className="text-sm font-medium text-white">
-                    Enable AI Agent as a backup to the phone number/number pool
-                  </span>
-                  <p className="text-xs text-gray-400 mt-1">
-                    AI Agent will answer the call if the user or call forwarding number doesn't respond
-                  </p>
-                </div>
-              </label>
-            </div>
-
-            {/* Working Hours Toggle */}
-            <div className="border-t border-gray-700 pt-4">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={false}
-                  onChange={() => {}}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500"
-                />
-                <div>
-                  <span className="text-sm font-medium text-white">
-                    Set working hours for the agent
-                  </span>
-                  <p className="text-xs text-gray-400 mt-1">
-                    The agent is active 24x7
-                  </p>
-                </div>
-              </label>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Select
-                label="Patience Level"
-                value={formData.patienceLevel || 'high'}
-                onChange={(e) => handleChange('patienceLevel', e.target.value)}
-                options={[
-                  { value: 'low', label: 'Low' },
-                  { value: 'medium', label: 'Medium' },
-                  { value: 'high', label: 'High' },
-                ]}
-              />
-
-              <Input
-                label="Max Call Duration (seconds)"
-                type="number"
-                value={formData.maxCallDuration || 300}
-                onChange={(e) => handleChange('maxCallDuration', parseInt(e.target.value))}
-                min={180}
-                max={900}
-              />
-            </div>
-
-            {/* Idle Reminders */}
-            <div className="border-t border-gray-700 pt-4">
-              <label className="flex items-center gap-2 mb-3">
-                <input
-                  type="checkbox"
-                  checked={formData.sendUserIdleReminders}
-                  onChange={(e) => handleChange('sendUserIdleReminders', e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded"
-                />
-                <span className="text-sm text-white">Send user idle reminders</span>
-              </label>
-
-              {formData.sendUserIdleReminders && (
-                <Input
-                  label="Reminder After Idle Time (seconds)"
-                  type="number"
-                  value={formData.reminderAfterIdleTimeSeconds || 8}
-                  onChange={(e) => handleChange('reminderAfterIdleTimeSeconds', parseInt(e.target.value))}
-                  min={1}
-                  max={20}
-                />
-              )}
-            </div>
-
-            {/* Backup Agent */}
-            <div className="border-t border-gray-700 pt-4">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={!formData.isAgentAsBackupDisabled}
-                  onChange={(e) => handleChange('isAgentAsBackupDisabled', !e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded"
-                />
-                <span className="text-sm text-white">
-                  Enable AI Agent as a backup to the phone number
-                </span>
-              </label>
-              <p className="text-xs text-gray-400 mt-1 ml-6">
-                AI Agent will answer the call if the user or call forwarding number doesn't respond
-              </p>
-            </div>
-
-            {/* Translation */}
-            <div className="border-t border-gray-700 pt-4">
-              <label className="flex items-center gap-2 mb-3">
-                <input
-                  type="checkbox"
-                  checked={formData.translation?.enabled || false}
-                  onChange={(e) => handleTranslationChange('enabled', e.target.checked)}
-                  className="w-4 h-4 text-blue-600 border-gray-300 rounded"
-                />
-                <span className="text-sm text-white">Enable Translation</span>
-              </label>
-
-              {formData.translation?.enabled && (
-                <Select
-                  label="Translation Language"
-                  value={formData.translation?.language || 'es'}
-                  onChange={(e) => handleTranslationChange('language', e.target.value)}
-                  options={[
-                    { value: 'es', label: 'Spanish' },
-                    { value: 'fr', label: 'French' },
-                    { value: 'de', label: 'German' },
-                    { value: 'it', label: 'Italian' },
-                    { value: 'pt', label: 'Portuguese' },
-                  ]}
-                />
-              )}
             </div>
           </div>
         )}
@@ -609,7 +617,12 @@ HANDLING CALLER QUERIES: LOGIC & RULES
                 Next
               </Button>
             ) : (
-              <Button type="submit" loading={loading}>
+              <Button 
+                type="button"
+                onClick={handleButtonClick}
+                loading={loading}
+                disabled={loading}
+              >
                 {mode === 'create' ? 'Create Agent' : 'Update Agent'}
               </Button>
             )}

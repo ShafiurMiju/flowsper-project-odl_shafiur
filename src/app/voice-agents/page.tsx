@@ -74,6 +74,9 @@ export default function VoiceAgentsPage() {
   const handleUpdateAgent = async (data: CreateVoiceAgentPayload) => {
     if (!editingAgent) return;
 
+    console.log('🔄 Updating agent with data:', data);
+    console.log('🔄 inboundNumber value:', data.inboundNumber);
+
     const token = localStorage.getItem('access_token');
     const res = await fetch(`/api/voice-agents/${editingAgent.id}`, {
       method: 'PUT',
@@ -85,6 +88,10 @@ export default function VoiceAgentsPage() {
     });
 
     if (!res.ok) throw new Error('Failed to update voice agent');
+    
+    const result = await res.json();
+    console.log('✅ Update response:', result);
+    
     setEditingAgent(null);
     await fetchAgents();
   };
@@ -534,7 +541,10 @@ export default function VoiceAgentsPage() {
             sendUserIdleReminders: editingAgent.sendUserIdleReminders,
             reminderAfterIdleTimeSeconds: editingAgent.reminderAfterIdleTimeSeconds,
             isAgentAsBackupDisabled: editingAgent.isAgentAsBackupDisabled,
-            inboundNumber: editingAgent.inboundNumber ?? undefined,
+            // Handle both inboundNumber (string) and inboundNumbers (array) from GHL API
+            inboundNumber: editingAgent.inboundNumbers && editingAgent.inboundNumbers.length > 0
+              ? editingAgent.inboundNumbers.join(',')
+              : (editingAgent.inboundNumber ?? undefined),
             sendPostCallNotificationTo: editingAgent.sendPostCallNotificationTo,
             translation: editingAgent.translation ? {
               enabled: editingAgent.translation.enabled,
