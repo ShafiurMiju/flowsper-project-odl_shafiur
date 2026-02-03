@@ -11,6 +11,20 @@ import {
   GHLMessage,
   GHLMessagesResponse,
   CreateMessagePayload,
+  GHLVoiceAgent,
+  GHLVoiceAgentsResponse,
+  CreateVoiceAgentPayload,
+  UpdateVoiceAgentPayload,
+  GHLVoiceAgentCall,
+  GHLVoiceAgentCallsResponse,
+  GHLVoiceCallLog,
+  GHLVoiceCallLogsResponse,
+  GHLVoiceAction,
+  CreateVoiceActionPayload,
+  UpdateVoiceActionPayload,
+  VoiceActionType,
+  GHLPhoneNumber,
+  GHLPhoneNumbersResponse,
 } from '@/types';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
@@ -19,7 +33,7 @@ const GHL_API_BASE = 'https://services.leadconnectorhq.com';
  * Multi-tenant GHL Client
  * Now accepts apiKey and locationId per request instead of using env vars
  */
-class GHLClient {
+export class GHLClient {
   private apiKey: string;
   private locationId: string;
 
@@ -64,6 +78,75 @@ class GHLClient {
     }
 
     return response.json();
+  }
+
+  // Request with specific API version (for Voice AI which uses 2021-04-15)
+  private async requestWithVersion<T>(
+    endpoint: string,
+    version: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const url = `${GHL_API_BASE}${endpoint}`;
+    
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Version': version,
+        ...options.headers,
+      },
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('GHL API Error:', {
+        status: response.status,
+        statusText: response.statusText,
+        url,
+        errorText,
+      });
+      throw new Error(
+        `GHL API Error: ${response.status} ${response.statusText} - ${errorText}`
+      );
+    }
+
+    return response.json();
+  }
+
+  // Request with specific API version that returns no content (for DELETE)
+  private async requestWithVersionRaw(
+    endpoint: string,
+    version: string,
+    options: RequestInit = {}
+  ): Promise<void> {
+    const url = `${GHL_API_BASE}${endpoint}`;
+    
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Content-Type': 'application/json',
+        'Version': version,
+        ...options.headers,
+      },
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('GHL API Error:', {
+        status: response.status,
+        statusText: response.statusText,
+        url,
+        errorText,
+      });
+      throw new Error(
+        `GHL API Error: ${response.status} ${response.statusText} - ${errorText}`
+      );
+    }
   }
 
   // ==================== CONTACTS ====================
@@ -308,6 +391,174 @@ class GHLClient {
     }
 
     return response.json();
+  }
+
+  // ==================== AI VOICE AGENTS ====================
+
+  async getVoiceAgents(page = 1, pageSize = 50): Promise<GHLVoiceAgentsResponse> {
+    const url = `/voice-ai/agents?locationId=${this.locationId}&page=${page}&pageSize=${pageSize}`;
+    return this.requestWithVersion<GHLVoiceAgentsResponse>(url, '2021-04-15');
+  }
+
+  async getVoiceAgent(agentId: string): Promise<GHLVoiceAgent> {
+    const url = `/voice-ai/agents/${agentId}?locationId=${this.locationId}`;
+    return this.requestWithVersion<GHLVoiceAgent>(url, '2021-04-15');
+  }
+
+  async createVoiceAgent(data: CreateVoiceAgentPayload): Promise<GHLVoiceAgent> {
+    return this.requestWithVersion<GHLVoiceAgent>('/voice-ai/agents', '2021-04-15', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...data,
+        locationId: this.locationId,
+      }),
+    });
+  }
+
+  async updateVoiceAgent(
+    agentId: string,
+    data: Partial<CreateVoiceAgentPayload>
+  ): Promise<GHLVoiceAgent> {
+    const url = `/voice-ai/agents/${agentId}?locationId=${this.locationId}`;
+    return this.requestWithVersion<GHLVoiceAgent>(url, '2021-04-15', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteVoiceAgent(agentId: string): Promise<void> {
+    const url = `/voice-ai/agents/${agentId}?locationId=${this.locationId}`;
+    await this.requestWithVersionRaw(url, '2021-04-15', {
+      method: 'DELETE',
+    });
+  }
+
+  async getVoiceAgentCalls(agentId: string): Promise<GHLVoiceAgentCallsResponse> {
+    return this.requestWithVersion<GHLVoiceAgentCallsResponse>(
+      `/voice-ai/agents/${agentId}/calls?locationId=${this.locationId}`,
+      '2021-04-15'
+    );
+  }
+
+  async triggerVoiceCall(agentId: string, phoneNumber: string, contactId?: string): Promise<{ call: GHLVoiceAgentCall }> {
+    const url = `/voice-ai/agents/${agentId}/call?locationId=${this.locationId}`;
+    return this.requestWithVersion<{ call: GHLVoiceAgentCall }>(url, '2021-04-15', {
+      method: 'POST',
+      body: JSON.stringify({
+        phoneNumber,
+        contactId,
+      }),
+    });
+  }
+
+  // ==================== VOICE AI CALL LOGS (Dashboard) ====================
+
+  async getVoiceCallLogs(options: {
+    agentId?: string;
+    contactId?: string;
+    callType?: 'LIVE' | 'TRIAL';
+    startDate?: number;
+    endDate?: number;
+    actionType?: VoiceActionType[];
+    sortBy?: 'duration' | 'createdAt';
+    sort?: 'ascend' | 'descend';
+    page?: number;
+    pageSize?: number;
+  } = {}): Promise<GHLVoiceCallLogsResponse> {
+    const params = new URLSearchParams({ locationId: this.locationId });
+    
+    if (options.agentId) params.append('agentId', options.agentId);
+    if (options.contactId) params.append('contactId', options.contactId);
+    if (options.callType) params.append('callType', options.callType);
+    if (options.startDate) params.append('startDate', options.startDate.toString());
+    if (options.endDate) params.append('endDate', options.endDate.toString());
+    if (options.actionType?.length) params.append('actionType', options.actionType.join(','));
+    if (options.sortBy) params.append('sortBy', options.sortBy);
+    if (options.sort) params.append('sort', options.sort);
+    if (options.page) params.append('page', options.page.toString());
+    if (options.pageSize) params.append('pageSize', options.pageSize.toString());
+
+    return this.requestWithVersion<GHLVoiceCallLogsResponse>(
+      `/voice-ai/dashboard/call-logs?${params.toString()}`,
+      '2021-04-15'
+    );
+  }
+
+  async getVoiceCallLog(callId: string): Promise<GHLVoiceCallLog> {
+    return this.requestWithVersion<GHLVoiceCallLog>(
+      `/voice-ai/dashboard/call-logs/${callId}?locationId=${this.locationId}`,
+      '2021-04-15'
+    );
+  }
+
+  // ==================== VOICE AI ACTIONS ====================
+
+  async createVoiceAction(data: CreateVoiceActionPayload): Promise<GHLVoiceAction> {
+    return this.requestWithVersion<GHLVoiceAction>('/voice-ai/actions', '2021-04-15', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...data,
+        locationId: this.locationId,
+      }),
+    });
+  }
+
+  async getVoiceAction(actionId: string): Promise<GHLVoiceAction> {
+    return this.requestWithVersion<GHLVoiceAction>(
+      `/voice-ai/actions/${actionId}?locationId=${this.locationId}`,
+      '2021-04-15'
+    );
+  }
+
+  async updateVoiceAction(
+    actionId: string,
+    data: UpdateVoiceActionPayload
+  ): Promise<GHLVoiceAction> {
+    return this.requestWithVersion<GHLVoiceAction>(
+      `/voice-ai/actions/${actionId}`,
+      '2021-04-15',
+      {
+        method: 'PUT',
+        body: JSON.stringify({
+          ...data,
+          locationId: this.locationId,
+        }),
+      }
+    );
+  }
+
+  async deleteVoiceAction(actionId: string, agentId: string): Promise<void> {
+    const url = `/voice-ai/actions/${actionId}?locationId=${this.locationId}&agentId=${agentId}`;
+    await this.requestWithVersionRaw(url, '2021-04-15', {
+      method: 'DELETE',
+    });
+  }
+
+  /**
+   * Get phone numbers for a location using Phone System API
+   * @see https://marketplace.gohighlevel.com/docs/ghl/phone-system/active-numbers
+   */
+  async getPhoneNumbers(): Promise<GHLPhoneNumbersResponse> {
+    const response = await this.request<{ numbers: GHLPhoneNumber[] }>(
+      `/phone-system/numbers/location/${this.locationId}?pageSize=1000&skipNumberPool=false`
+    );
+    return {
+      phoneNumbers: response.numbers || [],
+      total: response.numbers?.length || 0,
+    };
+  }
+
+  // ==================== KNOWLEDGE BASE ====================
+
+  /**
+   * List all knowledge bases (paginated)
+   * @see https://marketplace.gohighlevel.com/docs/ghl/knowledge-base/list-all-knowledge-bases-paginated
+   */
+  async getKnowledgeBases(page = 1, limit = 50): Promise<any> {
+    return this.requestWithVersion(
+      `/voice-ai/knowledge-bases?locationId=${this.locationId}&page=${page}&limit=${limit}`,
+      '2021-04-15'
+    );
   }
 
   // ==================== UTILITY ====================

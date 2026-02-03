@@ -1,4 +1,4 @@
-export { ghlClient, createGHLClient } from './ghl';
+export { ghlClient, createGHLClient, GHLClient } from './ghl';
 export { supabase, supabaseAdmin, isSupabaseConfigured } from './supabase';
 export { logActivity, getActivityLogs } from './activity-logger';
 export {
