@@ -17,7 +17,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { ghlClient } = clientResult;
+    const ghlClient = clientResult.ghlClient!;
     const { id } = await params;
     const result = await ghlClient!.getConversation(id);
     return NextResponse.json(result);

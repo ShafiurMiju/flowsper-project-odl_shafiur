@@ -151,9 +151,9 @@ export class GHLClient {
 
   // ==================== CONTACTS ====================
 
-  async getContacts(limit = 100): Promise<GHLContactsResponse> {
+  async getContacts(limit = 100, page = 1): Promise<GHLContactsResponse> {
     return this.request<GHLContactsResponse>(
-      `/contacts/?locationId=${this.locationId}&limit=${limit}`
+      `/contacts/?locationId=${this.locationId}&limit=${limit}&page=${page}`
     );
   }
 

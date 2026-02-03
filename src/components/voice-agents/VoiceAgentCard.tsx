@@ -12,12 +12,16 @@ interface VoiceAgentCardProps {
 }
 
 export function VoiceAgentCard({ agent, onEdit, onDelete, onCall }: VoiceAgentCardProps) {
+  // Determine active status based on inbound numbers
+  const hasInboundNumbers = (agent.inboundNumbers && agent.inboundNumbers.length > 0) || agent.inboundNumber;
+  const status = hasInboundNumbers ? 'active' : 'inactive';
+  
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return 'bg-green-100 text-green-800';
-      case 'inactive': return 'bg-gray-100 text-gray-800';
-      case 'draft': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'active': return 'bg-foreground text-background';
+      case 'inactive': return 'bg-muted text-muted-foreground';
+      case 'draft': return 'bg-muted text-muted-foreground';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -30,64 +34,64 @@ export function VoiceAgentCard({ agent, onEdit, onDelete, onCall }: VoiceAgentCa
       <div className="p-4">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-              <Phone className="w-5 h-5 text-blue-600" />
+            <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+              <Phone className="w-5 h-5 text-foreground" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900">{agent.name}</h3>
-              {agent.voiceName && (
-                <p className="text-xs text-gray-500">Voice: {agent.voiceName}</p>
+              <h3 className="font-semibold text-foreground">{agent.agentName}</h3>
+              {agent.voiceId && (
+                <p className="text-xs text-muted-foreground">Voice ID: {agent.voiceId}</p>
               )}
             </div>
           </div>
-          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(agent.status)}`}>
-            {getStatusIcon(agent.status)}
-            {agent.status}
+          <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
+            {getStatusIcon(status)}
+            {status}
           </span>
         </div>
 
-        {agent.description && (
-          <p className="text-sm text-gray-600 mb-3 line-clamp-2">{agent.description}</p>
+        {agent.welcomeMessage && (
+          <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{agent.welcomeMessage}</p>
         )}
 
-        {agent.objective && (
-          <div className="mb-3 p-2 bg-gray-50 rounded">
-            <p className="text-xs text-gray-500 mb-1">Objective:</p>
-            <p className="text-sm text-gray-700 line-clamp-2">{agent.objective}</p>
+        {agent.agentPrompt && (
+          <div className="mb-3 p-2 bg-muted/50 rounded">
+            <p className="text-xs text-muted-foreground mb-1">Prompt:</p>
+            <p className="text-sm text-foreground line-clamp-2">{agent.agentPrompt}</p>
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+        <div className="flex items-center justify-between pt-3 border-t border-border">
           <div className="flex items-center gap-2">
             {agent.language && (
-              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
                 {agent.language}
               </span>
             )}
-            {agent.recordCalls && (
-              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                📹 Recording
+            {agent.patienceLevel && (
+              <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+                ⏱️ {agent.patienceLevel}
               </span>
             )}
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => onCall(agent)}
-              className="p-2 text-green-600 hover:bg-green-50 rounded"
+              className="p-2 text-foreground hover:bg-muted rounded"
               title="Make test call"
             >
               <Phone className="w-4 h-4" />
             </button>
             <button
               onClick={() => onEdit(agent)}
-              className="p-2 text-blue-600 hover:bg-blue-50 rounded"
+              className="p-2 text-foreground hover:bg-muted rounded"
               title="Edit"
             >
               <Edit2 className="w-4 h-4" />
             </button>
             <button
               onClick={() => onDelete(agent.id)}
-              className="p-2 text-red-600 hover:bg-red-50 rounded"
+              className="p-2 text-foreground hover:bg-muted rounded"
               title="Delete"
             >
               <Trash2 className="w-4 h-4" />

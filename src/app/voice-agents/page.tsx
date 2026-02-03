@@ -1,10 +1,31 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Button, Card, CardHeader, Input, Modal } from '@/components/ui';
+import { Button, Card, CardHeader, Input, Modal, PageLoader, SkeletonCard } from '@/components/ui';
 import { VoiceAgentCard, VoiceAgentForm, VoiceActionForm, CallLogsView } from '@/components/voice-agents';
 import { GHLVoiceAgent, CreateVoiceAgentPayload, GHLVoiceAgentCall, GHLVoiceAction, CreateVoiceActionPayload } from '@/types';
-import { Plus, RefreshCw, Search, Phone, Edit2, Trash2, PhoneCall, Settings2, Zap } from 'lucide-react';
+import { Plus, RefreshCw, Search, Phone, Edit2, Trash2, PhoneCall, Settings2, Zap, Bot, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+
+// Voice ID to friendly name mapping
+const VOICE_NAMES: Record<string, string> = {
+  'jessica': 'Jessica - English, American, Female',
+  'michael': 'Michael - English, American, Male',
+  'sarah': 'Sarah - English, British, Female',
+  'james': 'James - English, British, Male',
+  'emma': 'Emma - English, Australian, Female',
+  'oliver': 'Oliver - English, Australian, Male',
+  'maria': 'Maria - Spanish, Female',
+  'carlos': 'Carlos - Spanish, Male',
+  'sophie': 'Sophie - French, Female',
+  'pierre': 'Pierre - French, Male',
+};
+
+const getVoiceName = (voiceId: string | undefined): string => {
+  if (!voiceId) return '-';
+  return VOICE_NAMES[voiceId] || voiceId;
+};
 
 export default function VoiceAgentsPage() {
   const [agents, setAgents] = useState<GHLVoiceAgent[]>([]);
@@ -68,6 +89,7 @@ export default function VoiceAgentsPage() {
     });
 
     if (!res.ok) throw new Error('Failed to create voice agent');
+    toast.success('Voice agent created successfully!');
     await fetchAgents();
   };
 
@@ -93,6 +115,7 @@ export default function VoiceAgentsPage() {
     console.log('✅ Update response:', result);
     
     setEditingAgent(null);
+    toast.success('Voice agent updated successfully!');
     await fetchAgents();
   };
 
@@ -107,9 +130,11 @@ export default function VoiceAgentsPage() {
       });
 
       if (!res.ok) throw new Error('Failed to delete voice agent');
+      toast.success('Voice agent deleted successfully!');
       await fetchAgents();
     } catch (error) {
       console.error('Error deleting voice agent:', error);
+      toast.error('Failed to delete voice agent');
     }
   };
 
@@ -230,29 +255,41 @@ export default function VoiceAgentsPage() {
   });
 
   return (
-    <div>
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">AI Voice Agents</h1>
-          <p className="text-gray-600 mt-1">
-            Manage your intelligent voice assistants
-          </p>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-foreground flex items-center justify-center">
+              <Bot className="w-5 h-5 text-background" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">AI Voice Agents</h1>
+              <p className="text-muted-foreground text-sm">
+                Manage your intelligent voice assistants
+              </p>
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="secondary" onClick={fetchAgents}>
-            <RefreshCw className="w-4 h-4 mr-2" />
+          <Button 
+            variant="secondary" 
+            onClick={fetchAgents}
+            disabled={loading}
+            className="gap-2"
+          >
+            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
             Refresh
           </Button>
           {activeTab === 'agents' && (
-            <Button onClick={() => setShowForm(true)}>
-              <Plus className="w-4 h-4 mr-2" />
+            <Button onClick={() => setShowForm(true)} className="gap-2">
+              <Plus className="w-4 h-4" />
               Create Agent
             </Button>
           )}
           {activeTab === 'actions' && selectedAgentForActions && (
-            <Button onClick={() => setShowActionForm(true)}>
-              <Plus className="w-4 h-4 mr-2" />
+            <Button onClick={() => setShowActionForm(true)} className="gap-2">
+              <Plus className="w-4 h-4" />
               Add Action
             </Button>
           )}
@@ -260,40 +297,43 @@ export default function VoiceAgentsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 mb-6">
+      <div className="border-b border-border/50">
         <nav className="-mb-px flex space-x-8">
           <button
             onClick={() => setActiveTab('agents')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+            className={cn(
+              "py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors",
               activeTab === 'agents'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+                ? 'border-violet-500 text-violet-600'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+            )}
           >
-            <Phone className="w-4 h-4 inline-block mr-2" />
+            <Phone className="w-4 h-4" />
             Agents ({agents.length})
           </button>
           <button
             onClick={() => setActiveTab('call-logs')}
-            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+            className={cn(
+              "py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors",
               activeTab === 'call-logs'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+                ? 'border-violet-500 text-violet-600'
+                : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+            )}
           >
-            <PhoneCall className="w-4 h-4 inline-block mr-2" />
+            <PhoneCall className="w-4 h-4" />
             Call Logs
           </button>
           {selectedAgentForActions && (
             <button
               onClick={() => setActiveTab('actions')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              className={cn(
+                "py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors",
                 activeTab === 'actions'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+                  ? 'border-violet-500 text-violet-600'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+              )}
             >
-              <Zap className="w-4 h-4 inline-block mr-2" />
+              <Zap className="w-4 h-4" />
               Actions: {selectedAgentForActions.agentName}
             </button>
           )}
@@ -304,135 +344,140 @@ export default function VoiceAgentsPage() {
       {activeTab === 'agents' && (
         <>
           {/* Search */}
-          <Card className="mb-6">
-            <div className="flex items-center gap-4">
+          <Card className="border-border/50 shadow-sm">
+            <div className="px-6 flex items-center gap-4">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   type="text"
                   placeholder="Search voice agents..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-10 text-black placeholder-gray-400"
+                  className="pl-10"
                 />
               </div>
             </div>
           </Card>
 
           {/* Agents Table */}
-          <Card padding="none">
-            <div className="p-6 border-b">
-              <CardHeader
-                title={`AI Voice Agents (${filteredAgents.length})`}
-                description="Click on an agent to view details and make test calls"
-              />
+          <Card padding="none" className="border-border/50 shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-border/50 bg-muted/30">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-foreground">AI Voice Agents</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {loading ? 'Loading...' : `${filteredAgents.length} agents found`}
+                  </p>
+                </div>
+              </div>
             </div>
 
         {loading ? (
-          <div className="p-12 text-center">
-            <RefreshCw className="w-8 h-8 mx-auto text-gray-400 animate-spin" />
-            <p className="mt-4 text-gray-600">Loading voice agents...</p>
+          <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(3)].map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
           </div>
         ) : filteredAgents.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-gray-600">
-              {search ? 'No voice agents found matching your search.' : 'No voice agents yet.'}
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <Bot className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              {search ? 'No agents found' : 'No voice agents yet'}
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              {search 
+                ? 'Try adjusting your search terms.' 
+                : 'Get started by creating your first voice agent.'}
             </p>
-            <Button className="mt-4" onClick={() => setShowForm(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Create your first voice agent
-            </Button>
+            {!search && (
+              <Button 
+                onClick={() => setShowForm(true)}
+                className="gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Create your first voice agent
+              </Button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b">
+              <thead className="bg-muted/50 border-b border-border/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Agent Name
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Voice
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Language
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Description
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-card divide-y divide-border/50">
                 {filteredAgents.map((agent) => (
-                  <tr key={agent.id} className="hover:bg-gray-50">
+                  <tr key={agent.id} className="hover:bg-muted/50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center mr-3">
-                          <Phone className="w-5 h-5 text-blue-600" />
+                        <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center mr-3">
+                          <Phone className="w-5 h-5 text-foreground" />
                         </div>
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {agent.agentName || agent.id}
-                          </div>
-                          {agent.businessName && (
-                            <div className="text-xs text-gray-500 line-clamp-1 max-w-xs">
-                              {agent.businessName}
-                            </div>
-                          )}
+                        <div className="text-sm font-medium text-foreground">
+                          {agent.agentName || agent.id}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-foreground text-background">
                         Active
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{agent.voiceId || '-'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{agent.language || '-'}</div>
+                      <div className="text-sm text-foreground">{agent.language || '-'}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900 max-w-md line-clamp-2">
+                      <div className="text-sm text-muted-foreground max-w-md line-clamp-2">
                         {agent.welcomeMessage || '-'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => handleCallAgent(agent)}
-                          className="text-green-600 hover:text-green-900"
+                          className="p-2 rounded-lg text-foreground hover:bg-muted transition-colors"
                           title="Make test call"
                         >
-                          <Phone className="w-5 h-5" />
+                          <Phone className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleManageActions(agent)}
-                          className="text-purple-600 hover:text-purple-900"
+                          className="p-2 rounded-lg text-foreground hover:bg-muted transition-colors"
                           title="Manage actions"
                         >
-                          <Zap className="w-5 h-5" />
+                          <Zap className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleEditAgent(agent)}
-                          className="text-blue-600 hover:text-blue-900"
+                          className="p-2 rounded-lg text-foreground hover:bg-muted transition-colors"
                           title="Edit agent"
                         >
-                          <Edit2 className="w-5 h-5" />
+                          <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDeleteAgent(agent.id)}
-                          className="text-red-600 hover:text-red-900"
+                          className="p-2 rounded-lg text-foreground hover:bg-muted transition-colors"
                           title="Delete agent"
                         >
-                          <Trash2 className="w-5 h-5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -453,12 +498,12 @@ export default function VoiceAgentsPage() {
 
       {/* Actions Tab */}
       {activeTab === 'actions' && selectedAgentForActions && (
-        <Card padding="none">
-          <div className="p-6 border-b">
-            <CardHeader
-              title={`Actions for ${selectedAgentForActions.agentName}`}
-              description="Configure automated actions for this voice agent"
-            />
+        <Card padding="none" className="border-border/50 shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-border/50 bg-muted/30">
+            <div>
+              <h3 className="font-semibold text-foreground">Actions for {selectedAgentForActions.agentName}</h3>
+              <p className="text-sm text-muted-foreground">Configure automated actions for this voice agent</p>
+            </div>
           </div>
 
           {agentActions.length === 0 ? (

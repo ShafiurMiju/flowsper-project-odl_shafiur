@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { ghlClient } = clientResult;
+    const ghlClient = clientResult.ghlClient!;
     console.log('📞 Calling GHL API for phone numbers...');
     const response = await ghlClient.getPhoneNumbers();
     console.log('📞 GHL API response:', JSON.stringify(response, null, 2));

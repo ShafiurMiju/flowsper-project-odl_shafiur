@@ -14,7 +14,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { ghlClient, subAccount, authUser } = clientResult;
+    const ghlClient = clientResult.ghlClient!;
+    const subAccount = clientResult.subAccount!;
+    const authUser = clientResult.authUser!;
     const body: CreateMessagePayload = await request.json();
 
     // Send message via GHL

@@ -1,12 +1,33 @@
 import { NextRequest } from 'next/server';
-import { createGHLClient } from './ghl';
+import { createGHLClient, GHLClient } from './ghl';
 import { getAuthUser, getSubAccountById } from './auth';
 import { DBSubAccount } from '@/types';
+
+type AuthUser = Awaited<ReturnType<typeof getAuthUser>>;
+
+// Discriminated union types for proper TypeScript narrowing
+type GHLClientErrorResult = {
+  error: string;
+  status: number;
+  needsSubAccountSelection?: boolean;
+  ghlClient?: undefined;
+  subAccount?: undefined;
+  authUser?: undefined;
+};
+
+type GHLClientSuccessResult = {
+  error: null;
+  ghlClient: GHLClient;
+  subAccount: DBSubAccount;
+  authUser: NonNullable<AuthUser>;
+};
+
+export type GHLClientResult = GHLClientErrorResult | GHLClientSuccessResult;
 
 /**
  * Get GHL client for the authenticated user's sub-account
  */
-export async function getGHLClientForRequest(request: NextRequest) {
+export async function getGHLClientForRequest(request: NextRequest): Promise<GHLClientResult> {
   const authHeader = request.headers.get('authorization');
   const accessToken = authHeader?.replace('Bearer ', '');
 

@@ -179,6 +179,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           setActiveSubAccount(null);
         }
+        
+        // Redirect to dashboard and refresh
+        window.location.href = '/';
       }
     } catch (error) {
       console.error('Error switching sub-account:', error);

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardHeader, Button } from '@/components/ui';
+import { Card, CardHeader, Button, PageLoader, SkeletonCard } from '@/components/ui';
 import { useAuth } from '@/context';
 import {
   Users,
@@ -11,8 +11,12 @@ import {
   Activity,
   RefreshCw,
   TrendingUp,
+  LayoutDashboard,
+  ArrowUpRight,
+  Sparkles,
 } from 'lucide-react';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 interface DashboardStats {
   contactCount: number;
@@ -100,11 +104,7 @@ export default function DashboardPage() {
   }, [user, activeSubAccount]);
 
   if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <RefreshCw className="w-8 h-8 text-blue-500 animate-spin" />
-      </div>
-    );
+    return <PageLoader message="Loading dashboard..." />;
   }
 
   if (!user) {
@@ -116,76 +116,87 @@ export default function DashboardPage() {
       label: 'Total Contacts',
       value: stats.contactCount,
       icon: Users,
-      color: 'text-blue-400',
-      bgColor: 'bg-blue-500/20',
       href: '/contacts',
     },
     {
       label: 'Opportunities',
       value: stats.opportunityCount,
       icon: Target,
-      color: 'text-purple-400',
-      bgColor: 'bg-purple-500/20',
       href: '/opportunities',
     },
     {
       label: 'Pipeline Value',
       value: `$${stats.totalPipelineValue.toLocaleString()}`,
       icon: DollarSign,
-      color: 'text-green-400',
-      bgColor: 'bg-green-500/20',
       href: '/opportunities',
     },
     {
       label: 'Recent Activities',
       value: stats.recentActivities,
       icon: Activity,
-      color: 'text-orange-400',
-      bgColor: 'bg-orange-500/20',
       href: '/activity',
     },
   ];
 
   return (
-    <div>
+    <div className="p-6 space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-          <p className="text-gray-400 mt-1">
-            {isAdmin && !activeSubAccount
-              ? 'Overview of all sub-accounts'
-              : `Overview for ${activeSubAccount?.name || 'your account'}`}
-          </p>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-foreground flex items-center justify-center">
+              <LayoutDashboard className="w-5 h-5 text-background" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+              <p className="text-muted-foreground text-sm">
+                {isAdmin && !activeSubAccount
+                  ? 'Overview of all sub-accounts'
+                  : `Overview for ${activeSubAccount?.name || 'your account'}`}
+              </p>
+            </div>
+          </div>
         </div>
-        <Button onClick={syncAll} loading={syncing}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+        <Button 
+          onClick={syncAll} 
+          loading={syncing}
+          className="gap-2"
+        >
+          <RefreshCw className={cn("w-4 h-4", syncing && "animate-spin")} />
           Sync All Data
         </Button>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {statCards.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <Link key={stat.label} href={stat.href}>
-              <Card className="hover:border-gray-600 transition-colors cursor-pointer">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-gray-400">{stat.label}</p>
-                    <p className="text-2xl font-bold text-white mt-1">
-                      {loading ? '...' : stat.value}
-                    </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {loading ? (
+          <SkeletonCard count={4} />
+        ) : (
+          statCards.map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <Link key={stat.label} href={stat.href}>
+                <Card className="group hover:border-foreground/30 transition-all duration-300 cursor-pointer hover:shadow-lg hover:-translate-y-1">
+                  <div className="flex items-start justify-between p-6 pb-4">
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground font-medium">{stat.label}</p>
+                      <p className="text-3xl font-bold text-foreground">
+                        {stat.value}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-foreground">
+                      <Icon className="w-5 h-5 text-background" />
+                    </div>
                   </div>
-                  <div className={`p-3 rounded-lg ${stat.bgColor}`}>
-                    <Icon className={`w-6 h-6 ${stat.color}`} />
+                  <div className="px-6 py-4 flex items-center gap-1 text-xs text-muted-foreground group-hover:text-primary transition-colors border-t border-border">
+                    <span>View details</span>
+                    <ArrowUpRight className="w-3 h-3" />
                   </div>
-                </div>
-              </Card>
-            </Link>
-          );
-        })}
+                </Card>
+              </Link>
+            );
+          })
+        )}
       </div>
 
       {/* Quick Actions */}
@@ -195,34 +206,36 @@ export default function DashboardPage() {
             title="Quick Actions"
             description="Common tasks you can perform"
           />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="p-6 pt-4">
+            <div className="grid grid-cols-2 gap-3">
             <Link href="/contacts">
-              <Button variant="secondary" className="w-full justify-start">
+              <Button variant="secondary" className="w-full justify-start h-10">
                 <Users className="w-4 h-4 mr-2" />
                 Manage Contacts
               </Button>
             </Link>
             <Link href="/opportunities">
-              <Button variant="secondary" className="w-full justify-start">
+              <Button variant="secondary" className="w-full justify-start h-10">
                 <Target className="w-4 h-4 mr-2" />
                 View Opportunities
               </Button>
             </Link>
             <Link href="/activity">
-              <Button variant="secondary" className="w-full justify-start">
+              <Button variant="secondary" className="w-full justify-start h-10">
                 <Activity className="w-4 h-4 mr-2" />
                 Activity Log
               </Button>
             </Link>
             <Button
               variant="secondary"
-              className="w-full justify-start"
+              className="w-full justify-start h-10"
               onClick={syncAll}
               loading={syncing}
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               Sync Data
             </Button>
+            </div>
           </div>
         </Card>
 
@@ -231,27 +244,28 @@ export default function DashboardPage() {
             title="Integration Status"
             description="Connected services and their status"
           />
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-orange-400" />
+          <div className="p-6 pt-4">
+            <div className="space-y-3">
+            <div className="flex items-center justify-between p-5 bg-muted rounded-lg">
+              <div className="flex items-center gap-4">
+                <div className="w-11 h-11 bg-foreground/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <TrendingUp className="w-5 h-5 text-foreground" />
                 </div>
                 <div>
-                  <p className="font-medium text-white">GoHighLevel</p>
-                  <p className="text-sm text-gray-400">CRM Data Source</p>
+                  <p className="font-medium text-foreground">GoHighLevel</p>
+                  <p className="text-sm text-muted-foreground">CRM Data Source</p>
                 </div>
               </div>
-              <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs font-medium rounded-full">
+              <span className="px-4 py-2 bg-foreground text-background text-xs font-medium rounded-full whitespace-nowrap ml-4">
                 Connected
               </span>
             </div>
 
-            <div className="flex items-center justify-between p-3 bg-gray-800 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+            <div className="flex items-center justify-between p-5 bg-muted rounded-lg">
+              <div className="flex items-center gap-4">
+                <div className="w-11 h-11 bg-foreground/10 rounded-lg flex items-center justify-center flex-shrink-0">
                   <svg
-                    className="w-5 h-5 text-emerald-400"
+                    className="w-5 h-5 text-foreground"
                     viewBox="0 0 24 24"
                     fill="currentColor"
                   >
@@ -264,13 +278,14 @@ export default function DashboardPage() {
                   </svg>
                 </div>
                 <div>
-                  <p className="font-medium text-white">Supabase</p>
-                  <p className="text-sm text-gray-400">Database & Storage</p>
+                  <p className="font-medium text-foreground">Supabase</p>
+                  <p className="text-sm text-muted-foreground">Database & Storage</p>
                 </div>
               </div>
-              <span className="px-2 py-1 bg-green-500/20 text-green-400 text-xs font-medium rounded-full">
+              <span className="px-4 py-2 bg-foreground text-background text-xs font-medium rounded-full whitespace-nowrap ml-4">
                 Connected
               </span>
+            </div>
             </div>
           </div>
         </Card>

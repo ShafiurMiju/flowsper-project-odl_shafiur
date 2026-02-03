@@ -136,7 +136,7 @@ export function OpportunityForm({
         {mode === 'edit' && (
           <Select
             label="Status"
-            value={formData.status}
+            value={formData.status || 'open'}
             onChange={(e) =>
               handleChange(
                 'status',

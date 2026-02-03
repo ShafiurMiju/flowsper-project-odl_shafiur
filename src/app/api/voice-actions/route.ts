@@ -17,7 +17,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { ghlClient, subAccount, authUser } = clientResult;
+    const ghlClient = clientResult.ghlClient!;
+    const subAccount = clientResult.subAccount!;
+    const authUser = clientResult.authUser!;
     const body = await request.json();
 
     const result = await ghlClient.createVoiceAction(body);
@@ -31,7 +33,7 @@ export async function POST(request: NextRequest) {
         entity_type: 'contact' as const,
         entity_id: result.id,
         entity_name: `Voice Action: ${result.name || body.name}`,
-        details: { type: result.type || body.type },
+        details: { type: result.actionType || body.actionType },
       });
     }
 

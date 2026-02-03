@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button, Input } from '@/components/ui';
 import { ConversationCard, MessageForm, MessageBubble } from '@/components/conversations';
 import { GHLConversation, GHLMessage, CreateMessagePayload, GHLContact } from '@/types';
-import { RefreshCw, Search, Send, Plus, X } from 'lucide-react';
+import { RefreshCw, Search, Send, Plus, X, MessageCircle, MessagesSquare } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function ConversationsPage() {
   const [conversations, setConversations] = useState<GHLConversation[]>([]);
@@ -196,23 +197,33 @@ export default function ConversationsPage() {
   }, [messages]);
 
   return (
-    <div className="h-[calc(100vh-120px)] flex">
+    <div className="h-[calc(100vh-120px)] flex rounded-xl border border-border/50 overflow-hidden shadow-sm bg-background">
       {/* Conversations List */}
-      <div className="w-96 border-r border-gray-700 flex flex-col">
+      <div className="w-96 border-r border-border/50 flex flex-col bg-card">
         {/* Header */}
-        <div className="p-4 border-b border-gray-700">
+        <div className="p-4 border-b border-border/50 bg-muted/30">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold text-white">Messages</h2>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <MessagesSquare className="w-5 h-5 text-white" />
+              </div>
+              <h2 className="text-xl font-bold text-foreground">Messages</h2>
+            </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={syncConversations}
-                loading={syncing}
+                disabled={syncing}
+                className="h-8 w-8 p-0"
               >
-                <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+                <RefreshCw className={cn("w-4 h-4", syncing && "animate-spin")} />
               </Button>
-              <Button size="sm" onClick={() => setShowNewMessage(true)}>
+              <Button 
+                size="sm" 
+                onClick={() => setShowNewMessage(true)}
+                className="h-8 w-8 p-0 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+              >
                 <Plus className="w-4 h-4" />
               </Button>
             </div>
@@ -220,7 +231,7 @@ export default function ConversationsPage() {
 
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               type="text"
               placeholder="Search conversations..."
@@ -235,16 +246,25 @@ export default function ConversationsPage() {
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="p-12 text-center">
-              <RefreshCw className="w-8 h-8 mx-auto text-gray-400 animate-spin" />
-              <p className="mt-4 text-gray-500">Loading conversations...</p>
+              <RefreshCw className="w-8 h-8 mx-auto text-muted-foreground animate-spin" />
+              <p className="mt-4 text-muted-foreground">Loading conversations...</p>
             </div>
           ) : conversations.length === 0 ? (
             <div className="p-12 text-center">
-              <p className="text-gray-500">
-                {search ? 'No conversations found.' : 'No conversations yet.'}
+              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                <MessageCircle className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">
+                {search ? 'No results' : 'No conversations'}
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                {search ? 'Try a different search.' : 'Start a new conversation.'}
               </p>
-              <Button className="mt-4" onClick={() => setShowNewMessage(true)}>
-                <Plus className="w-4 h-4 mr-2" />
+              <Button 
+                onClick={() => setShowNewMessage(true)}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 gap-2"
+              >
+                <Plus className="w-4 h-4" />
                 Start a conversation
               </Button>
             </div>
@@ -262,18 +282,18 @@ export default function ConversationsPage() {
       </div>
 
       {/* Messages Panel */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col bg-background">
         {selectedConversation ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+            <div className="p-4 border-b border-border/50 flex items-center justify-between bg-muted/30">
               <div>
-                <h3 className="text-lg font-semibold text-white">
+                <h3 className="text-lg font-semibold text-foreground">
                   {selectedConversation.contactName ||
                     selectedConversation.fullName ||
                     'Unknown Contact'}
                 </h3>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   {selectedConversation.phone || selectedConversation.email}
                 </p>
               </div>
@@ -281,20 +301,21 @@ export default function ConversationsPage() {
                 variant="secondary"
                 size="sm"
                 onClick={() => setSelectedConversation(null)}
+                className="h-8 w-8 p-0"
               >
                 <X className="w-4 h-4" />
               </Button>
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 bg-gray-900">
+            <div className="flex-1 overflow-y-auto p-4 bg-muted/20">
               {messagesLoading ? (
                 <div className="flex items-center justify-center h-full">
-                  <RefreshCw className="w-8 h-8 text-gray-400 animate-spin" />
+                  <RefreshCw className="w-8 h-8 text-muted-foreground animate-spin" />
                 </div>
               ) : messages.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
-                  <p className="text-gray-500">No messages yet</p>
+                  <p className="text-muted-foreground">No messages yet</p>
                 </div>
               ) : (
                 <>
@@ -311,10 +332,10 @@ export default function ConversationsPage() {
             </div>
 
             {/* Message Input */}
-            <div className="p-4 border-t border-gray-700">
+            <div className="p-4 border-t border-border/50 bg-card">
               {/* Message Type Selector */}
               <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-400 mb-2">
+                <label className="block text-sm font-medium text-muted-foreground mb-2">
                   Send via:
                 </label>
                 <div className="flex gap-2">
@@ -322,11 +343,12 @@ export default function ConversationsPage() {
                     <button
                       type="button"
                       onClick={() => setMessageType('SMS')}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      className={cn(
+                        "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
                         messageType === 'SMS'
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                      }`}
+                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      )}
                     >
                       SMS
                     </button>
@@ -335,11 +357,12 @@ export default function ConversationsPage() {
                     <button
                       type="button"
                       onClick={() => setMessageType('Email')}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      className={cn(
+                        "px-4 py-2 rounded-lg text-sm font-medium transition-colors",
                         messageType === 'Email'
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                      }`}
+                          ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      )}
                     >
                       Email
                     </button>
@@ -355,7 +378,7 @@ export default function ConversationsPage() {
                     value={emailSubject}
                     onChange={(e) => setEmailSubject(e.target.value)}
                     placeholder="Email subject..."
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
               )}
@@ -372,31 +395,35 @@ export default function ConversationsPage() {
                   }}
                   placeholder="Type a message..."
                   rows={3}
-                  className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 />
                 <Button
                   onClick={handleSendMessage}
-                  loading={sendingMessage}
-                  disabled={!newMessage.trim()}
+                  disabled={sendingMessage || !newMessage.trim()}
+                  className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                 >
-                  <Send className="w-4 h-4" />
+                  {sendingMessage ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
                 </Button>
               </div>
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 Press Enter to send, Shift+Enter for new line
               </p>
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center bg-gray-900">
+          <div className="flex-1 flex items-center justify-center bg-muted/20">
             <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 bg-gray-800 rounded-full flex items-center justify-center">
-                <Search className="w-8 h-8 text-gray-600" />
+              <div className="w-20 h-20 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
+                <MessagesSquare className="w-10 h-10 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-400 mb-2">
+              <h3 className="text-lg font-semibold text-foreground mb-2">
                 Select a conversation
               </h3>
-              <p className="text-gray-600">
+              <p className="text-muted-foreground">
                 Choose a conversation from the list to view messages
               </p>
             </div>

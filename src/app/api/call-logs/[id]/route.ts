@@ -8,9 +8,10 @@ import { getGHLClientForRequest } from '@/lib';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const clientResult = await getGHLClientForRequest(request);
     
     if (clientResult.error) {
@@ -20,8 +21,14 @@ export async function GET(
       );
     }
 
-    const { ghlClient } = clientResult;
-    const result = await ghlClient.getVoiceCallLog(params.id);
+    const ghlClient = clientResult.ghlClient!;
+    if (!ghlClient) {
+      return NextResponse.json(
+        { error: 'GHL client not available' },
+        { status: 500 }
+      );
+    }
+    const result = await ghlClient.getVoiceCallLog(id);
     
     return NextResponse.json(result);
   } catch (error) {

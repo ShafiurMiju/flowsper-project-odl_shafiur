@@ -17,7 +17,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { ghlClient } = clientResult;
+    const ghlClient = clientResult.ghlClient!;
     const { id } = await params;
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get('limit') || '50');
@@ -48,12 +48,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { ghlClient, subAccount, authUser } = clientResult;
+    const ghlClient = clientResult.ghlClient!;
+    const subAccount = clientResult.subAccount!;
+    const authUser = clientResult.authUser!;
     const { id } = await params;
     const body = await request.json();
 
     // Send message via GHL
-    const result = await ghlClient!.sendMessage({
+    const result = await ghlClient.sendMessage({
       ...body,
       conversationId: id,
     });

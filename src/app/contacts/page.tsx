@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Button, Card, CardHeader, Input } from '@/components/ui';
+import { Button, Card, CardHeader, Input, PageLoader, SkeletonCard } from '@/components/ui';
 import { ContactCard, ContactForm } from '@/components/contacts';
 import { GHLContact, CreateContactPayload } from '@/types';
-import { Plus, RefreshCw, Search, Download, Upload } from 'lucide-react';
+import { Plus, RefreshCw, Search, Download, Upload, Users, UserPlus, Edit2, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<GHLContact[]>([]);
@@ -13,15 +15,18 @@ export default function ContactsPage() {
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingContact, setEditingContact] = useState<GHLContact | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchContacts = useCallback(async () => {
     setLoading(true);
+    setCurrentPage(1);
     try {
       const token = localStorage.getItem('access_token');
       const url = search
         ? `/api/contacts?search=${encodeURIComponent(search)}`
-        : '/api/contacts?limit=50';
+        : '/api/contacts';
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -230,25 +235,35 @@ export default function ContactsPage() {
   };
 
   return (
-    <div>
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Contacts</h1>
-          <p className="text-gray-600 mt-1">
-            Manage your GoHighLevel contacts
-          </p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-foreground rounded-xl flex items-center justify-center">
+            <Users className="w-6 h-6 text-background" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Contacts</h1>
+            <p className="text-muted-foreground">
+              Manage your GoHighLevel contacts
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="secondary" onClick={handleExportContacts}>
-            <Download className="w-4 h-4 mr-2" />
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button 
+            variant="secondary" 
+            onClick={handleExportContacts}
+            className="gap-2"
+          >
+            <Download className="w-4 h-4" />
             Export
           </Button>
           <Button
             variant="secondary"
             onClick={() => fileInputRef.current?.click()}
+            className="gap-2"
           >
-            <Upload className="w-4 h-4 mr-2" />
+            <Upload className="w-4 h-4" />
             Import
           </Button>
           <input
@@ -258,68 +273,227 @@ export default function ContactsPage() {
             onChange={handleImportContacts}
             className="hidden"
           />
-          <Button variant="secondary" onClick={syncContacts} loading={syncing}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+          <Button 
+            variant="secondary" 
+            onClick={syncContacts} 
+            loading={syncing}
+            className="gap-2"
+          >
+            <RefreshCw className={cn("w-4 h-4", syncing && "animate-spin")} />
             Sync
           </Button>
-          <Button onClick={() => setShowForm(true)}>
-            <Plus className="w-4 h-4 mr-2" />
+          <Button 
+            onClick={() => setShowForm(true)}
+            className="gap-2"
+          >
+            <Plus className="w-4 h-4" />
             Add Contact
           </Button>
         </div>
       </div>
 
       {/* Search */}
-      <Card className="mb-6">
-        <div className="flex items-center gap-4">
+      <Card className="border-border/50 shadow-sm">
+        <div className="px-6 flex items-center gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               type="text"
               placeholder="Search contacts by name, email, or phone..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 text-black placeholder-gray-400"
+              className="pl-10"
             />
           </div>
         </div>
       </Card>
 
       {/* Contacts Grid */}
-      <Card padding="none">
-        <div className="p-6 border-b">
-          <CardHeader
-            title={`All Contacts (${contacts.length})`}
-            description="Click on a contact to view details"
-          />
+      <Card padding="none" className="border-border/50 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-border/50 bg-muted/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-foreground">All Contacts</h3>
+              <p className="text-sm text-muted-foreground">
+                {loading ? 'Loading...' : `${contacts.length} contacts found`}
+              </p>
+            </div>
+          </div>
         </div>
 
         {loading ? (
-          <div className="p-12 text-center">
-            <RefreshCw className="w-8 h-8 mx-auto text-gray-400 animate-spin" />
-            <p className="mt-4 text-gray-600">Loading contacts...</p>
+          <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(6)].map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
           </div>
         ) : contacts.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-gray-600">
-              {search ? 'No contacts found matching your search.' : 'No contacts yet.'}
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <UserPlus className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              {search ? 'No contacts found' : 'No contacts yet'}
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              {search 
+                ? 'Try adjusting your search terms.' 
+                : 'Get started by creating your first contact.'}
             </p>
-            <Button className="mt-4" onClick={() => setShowForm(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Create your first contact
-            </Button>
+            {!search && (
+              <Button 
+                onClick={() => setShowForm(true)}
+                className="gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Create your first contact
+              </Button>
+            )}
           </div>
         ) : (
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {contacts.map((contact) => (
-              <ContactCard
-                key={contact.id}
-                contact={contact}
-                onEdit={handleEditContact}
-                onDelete={handleDeleteContact}
-              />
-            ))}
-          </div>
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-muted/50 border-b border-border/50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Email
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Phone
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Company
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Tags
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-card divide-y divide-border/50">
+                  {contacts
+                    .slice(
+                      (currentPage - 1) * itemsPerPage,
+                      currentPage * itemsPerPage
+                    )
+                    .map((contact) => (
+                      <tr key={contact.id} className="hover:bg-muted/50 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="w-10 h-10 rounded-full bg-foreground text-background flex items-center justify-center mr-3 font-semibold text-sm">
+                              {(contact.firstName?.[0] || 'U').toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-foreground">
+                                {contact.firstName && contact.lastName
+                                  ? `${contact.firstName} ${contact.lastName}`
+                                  : contact.firstName || contact.lastName || 'Unknown'}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-foreground">{contact.email || '-'}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-foreground">{contact.phone || '-'}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-muted-foreground">{contact.companyName || '-'}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex gap-1 flex-wrap">
+                            {(contact.tags || []).slice(0, 2).map((tag) => (
+                              <span
+                                key={tag}
+                                className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-foreground"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                            {(contact.tags || []).length > 2 && (
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium text-muted-foreground">
+                                +{(contact.tags || []).length - 2}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => handleEditContact(contact)}
+                              className="p-2 rounded-lg text-foreground hover:bg-muted transition-colors"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteContact(contact.id)}
+                              className="p-2 rounded-lg text-foreground hover:bg-muted transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between px-6 py-4 border-t border-border/50">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Show</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="px-3 py-2 rounded-lg border border-border bg-card text-foreground text-sm"
+                >
+                  <option value="5">5</option>
+                  <option value="10">10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
+                </select>
+                <span className="text-sm text-muted-foreground">per page</span>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-muted-foreground">
+                  Page {currentPage} of {Math.ceil(contacts.length / itemsPerPage)}
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="px-3 py-2 rounded-lg border border-border text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() =>
+                      setCurrentPage((p) =>
+                        Math.min(Math.ceil(contacts.length / itemsPerPage), p + 1)
+                      )
+                    }
+                    disabled={currentPage >= Math.ceil(contacts.length / itemsPerPage)}
+                    className="px-3 py-2 rounded-lg border border-border text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
         )}
       </Card>
 

@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { ghlClient } = clientResult;
+    const ghlClient = clientResult.ghlClient!;
     const searchParams = request.nextUrl.searchParams;
     const pipelineId = searchParams.get('pipelineId') || undefined;
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -42,7 +42,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { ghlClient, subAccount, authUser } = clientResult;
+    const ghlClient = clientResult.ghlClient!;
+    const subAccount = clientResult.subAccount!;
+    const authUser = clientResult.authUser!;
     const body: CreateOpportunityPayload = await request.json();
 
     // Create opportunity in GHL

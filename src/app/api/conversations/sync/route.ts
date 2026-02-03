@@ -13,7 +13,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { ghlClient, subAccount, authUser } = clientResult;
+    const ghlClient = clientResult.ghlClient!;
+    const subAccount = clientResult.subAccount!;
+    const authUser = clientResult.authUser!;
 
     // Fetch conversations from GHL
     const { conversations } = await ghlClient!.getConversations(100);

@@ -1,25 +1,31 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Card, CardHeader, Button, Select } from '@/components/ui';
+import { Card, CardHeader, Button, Select, SkeletonCard } from '@/components/ui';
 import { DBActivityLog } from '@/types';
-import { RefreshCw, Users, Target, Plus, Edit2, Trash2, ArrowRight } from 'lucide-react';
+import { RefreshCw, Users, Target, Plus, Edit2, Trash2, ArrowRight, Activity, Clock, Filter, LogIn, LogOut } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { LucideIcon } from 'lucide-react';
 
-const actionIcons = {
+const actionIcons: Record<string, LucideIcon> = {
   create: Plus,
   update: Edit2,
   delete: Trash2,
   sync: RefreshCw,
   move: ArrowRight,
+  login: LogIn,
+  logout: LogOut,
 };
 
-const actionColors = {
-  create: 'bg-green-100 text-green-600',
-  update: 'bg-blue-100 text-blue-600',
-  delete: 'bg-red-100 text-red-600',
-  sync: 'bg-purple-100 text-purple-600',
-  move: 'bg-orange-100 text-orange-600',
+const actionColors: Record<string, string> = {
+  create: 'bg-muted text-foreground',
+  update: 'bg-muted text-foreground',
+  delete: 'bg-muted text-foreground',
+  sync: 'bg-muted text-foreground',
+  move: 'bg-muted text-foreground',
+  login: 'bg-muted text-foreground',
+  logout: 'bg-muted text-foreground',
 };
 
 export default function ActivityPage() {
@@ -52,26 +58,37 @@ export default function ActivityPage() {
   }, [filter]);
 
   return (
-    <div>
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Activity Log</h1>
-          <p className="text-gray-600 mt-1">
-            Track all changes to contacts and opportunities
-          </p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-foreground rounded-xl flex items-center justify-center">
+            <Activity className="w-6 h-6 text-background" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Activity Log</h1>
+            <p className="text-muted-foreground">
+              Track all changes to contacts and opportunities
+            </p>
+          </div>
         </div>
-        <Button variant="secondary" onClick={fetchLogs} loading={loading}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+        <Button 
+          variant="secondary" 
+          onClick={fetchLogs} 
+          loading={loading}
+          className="gap-2"
+        >
+          <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
           Refresh
         </Button>
       </div>
 
       {/* Filter */}
-      <Card className="mb-6">
-        <div className="flex items-center gap-4">
+      <Card className="border-border/50 shadow-sm">
+        <div className="px-6 flex items-center gap-4">
+          <Filter className="w-5 h-5 text-muted-foreground" />
           <Select
-            label="Filter by type"
+            label=""
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             options={[
@@ -79,73 +96,90 @@ export default function ActivityPage() {
               { value: 'contact', label: 'Contacts Only' },
               { value: 'opportunity', label: 'Opportunities Only' },
             ]}
-            className="max-w-xs"
+            className="min-w-[180px]"
           />
         </div>
       </Card>
 
       {/* Activity List */}
-      <Card padding="none">
-        <div className="p-6 border-b">
-          <CardHeader
-            title={`Activity History (${logs.length})`}
-            description="Recent actions performed in the system"
-          />
+      <Card padding="none" className="border-border/50 shadow-sm overflow-hidden">
+        <div className="p-6 border-b border-border/50 bg-muted/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-foreground">Activity History</h3>
+              <p className="text-sm text-muted-foreground">
+                {loading ? 'Loading...' : `${logs.length} recent actions`}
+              </p>
+            </div>
+          </div>
         </div>
 
         {loading ? (
-          <div className="p-12 text-center">
-            <RefreshCw className="w-8 h-8 mx-auto text-gray-400 animate-spin" />
-            <p className="mt-4 text-gray-600">Loading activity logs...</p>
+          <div className="p-6 space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-start gap-4 animate-pulse">
+                <div className="w-10 h-10 bg-muted rounded-lg" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-muted rounded w-1/4" />
+                  <div className="h-3 bg-muted rounded w-1/2" />
+                </div>
+                <div className="h-3 bg-muted rounded w-20" />
+              </div>
+            ))}
           </div>
         ) : logs.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-gray-600">
-              No activity logs yet. Perform some actions to see them here.
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <Activity className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">No activity yet</h3>
+            <p className="text-muted-foreground">
+              Perform some actions to see them here.
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-border/50">
             {logs.map((log) => {
               const Icon = actionIcons[log.action] || RefreshCw;
-              const colorClass = actionColors[log.action] || 'bg-gray-100 text-gray-600';
+              const colorClass = actionColors[log.action] || 'bg-muted text-muted-foreground';
               const EntityIcon = log.entity_type === 'contact' ? Users : Target;
 
               return (
                 <div
                   key={log.id}
-                  className="p-4 flex items-start gap-4 hover:bg-gray-50"
+                  className="p-4 flex items-start gap-4 hover:bg-muted/50 transition-colors"
                 >
-                  <div className={`p-2 rounded-lg ${colorClass}`}>
+                  <div className={cn("p-2.5 rounded-xl", colorClass)}>
                     <Icon className="w-4 h-4" />
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-900 capitalize">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-foreground capitalize">
                         {log.action}
                       </span>
-                      <span className="text-gray-400">•</span>
-                      <div className="flex items-center gap-1 text-gray-600">
-                        <EntityIcon className="w-3 h-3" />
-                        <span className="capitalize text-sm">
+                      <span className="text-muted-foreground">•</span>
+                      <div className="flex items-center gap-1.5 px-2 py-0.5 bg-muted/50 rounded-full">
+                        <EntityIcon className="w-3 h-3 text-muted-foreground" />
+                        <span className="capitalize text-xs text-muted-foreground">
                           {log.entity_type}
                         </span>
                       </div>
                     </div>
 
-                    <p className="text-gray-700 mt-1 truncate">
+                    <p className="text-foreground mt-1 truncate">
                       {log.entity_name || log.entity_id}
                     </p>
 
                     {log.details && (
-                      <p className="text-sm text-gray-500 mt-1">
+                      <p className="text-sm text-muted-foreground mt-1 line-clamp-1">
                         {JSON.stringify(log.details)}
                       </p>
                     )}
                   </div>
 
-                  <div className="text-sm text-gray-500 whitespace-nowrap">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap">
+                    <Clock className="w-3 h-3" />
                     {formatDistanceToNow(new Date(log.created_at), {
                       addSuffix: true,
                     })}

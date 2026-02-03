@@ -18,7 +18,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { ghlClient } = clientResult;
+    // After error check, ghlClient is guaranteed to exist
+    const ghlClient = clientResult.ghlClient!;
     
     // Get query parameters
     const { searchParams } = new URL(request.url);

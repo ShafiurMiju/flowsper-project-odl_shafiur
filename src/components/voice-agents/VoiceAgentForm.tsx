@@ -338,23 +338,46 @@ export function VoiceAgentForm({
       isOpen={isOpen} 
       onClose={onClose} 
       title={mode === 'create' ? 'Create Voice Agent' : 'Edit Voice Agent'}
+      size="2xl"
     >
       <form onSubmit={(e) => e.preventDefault()} onKeyDown={handleFormKeyDown} className="space-y-4">
         {/* Progress Steps */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-center mb-8 max-w-2xl mx-auto">
           {[1, 2, 3].map((s) => (
             <div key={s} className="flex items-center">
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  step >= s ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-600'
-                }`}
-              >
-                {s}
+              <div className="flex flex-col items-center gap-2">
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
+                    step === s
+                      ? 'bg-foreground text-background ring-4 ring-foreground/20 scale-110'
+                      : step > s
+                      ? 'bg-foreground text-background'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {step > s ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    s
+                  )}
+                </div>
+                <div className="text-center">
+                  <div className={`text-xs font-medium whitespace-nowrap ${
+                    step === s ? 'text-foreground' : step > s ? 'text-foreground' : 'text-muted-foreground'
+                  }`}>
+                    {s === 1 ? 'Agent Details' : s === 2 ? 'Agent Goals' : 'Settings'}
+                  </div>
+                </div>
               </div>
-              <span className={`ml-2 text-sm ${step >= s ? 'text-blue-400' : 'text-gray-300'}`}>
-                {s === 1 ? 'Agent Details' : s === 2 ? 'Agent Goals' : 'Settings'}
-              </span>
-              {s < 3 && <div className="w-8 h-0.5 mx-2 bg-gray-200" />}
+              {s < 3 && (
+                <div className="w-24 h-0.5 mx-4 mb-6">
+                  <div className={`h-full rounded-full transition-all ${
+                    step > s ? 'bg-foreground' : 'bg-border'
+                  }`} />
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -362,8 +385,8 @@ export function VoiceAgentForm({
         {/* Step 1: Agent Details */}
         {step === 1 && (
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-white">Agent Details</h3>
-            <p className="text-sm text-gray-300 mb-4">Customize your Agent according to your needs</p>
+            <h3 className="text-lg font-medium text-foreground">Agent Details</h3>
+            <p className="text-sm text-muted-foreground mb-4">Customize your Agent according to your needs</p>
 
             <div className="grid grid-cols-2 gap-4">
               <Input
@@ -417,7 +440,7 @@ export function VoiceAgentForm({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-white mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Agent's Initial Message
               </label>
               <textarea
@@ -426,9 +449,9 @@ export function VoiceAgentForm({
                 placeholder="Hey, you have reached [Business Name]. How can I help you today?"
                 rows={3}
                 maxLength={190}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-white bg-gray-800"
+                className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-foreground bg-background text-foreground placeholder:text-muted-foreground"
               />
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {(formData.welcomeMessage?.length || 0)}/190 characters
               </p>
             </div>
@@ -438,18 +461,18 @@ export function VoiceAgentForm({
         {/* Step 2: Agent Goals / Prompt */}
         {step === 2 && (
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-white">Agent Goals</h3>
-            <p className="text-sm text-gray-300 mb-4">Set up Agent's personality and actions</p>
+            <h3 className="text-lg font-medium text-foreground">Agent Goals</h3>
+            <p className="text-sm text-muted-foreground mb-4">Set up Agent's personality and actions</p>
 
             {/* Knowledge Base Selection */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-white">
+                <label className="block text-sm font-medium text-foreground">
                   Select knowledge base
                 </label>
                 <a 
                   href="#" 
-                  className="text-sm text-blue-400 hover:text-blue-300"
+                  className="text-sm text-foreground hover:text-muted-foreground"
                   onClick={(e) => {
                     e.preventDefault();
                     // TODO: Open knowledge base creation modal
@@ -474,20 +497,20 @@ export function VoiceAgentForm({
             {/* Prompt */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-white">
+                <label className="block text-sm font-medium text-foreground">
                   Prompt
                 </label>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    className="text-sm text-gray-400 hover:text-gray-300"
+                    className="text-sm text-muted-foreground hover:text-foreground"
                     title="Custom Value"
                   >
                     ⚙️ Custom Value
                   </button>
                   <button
                     type="button"
-                    className="text-sm text-gray-400 hover:text-gray-300"
+                    className="text-sm text-muted-foreground hover:text-foreground"
                     title="Evaluate"
                   >
                     📊 Evaluate
@@ -502,7 +525,7 @@ export function VoiceAgentForm({
 Introduction: You are My Agent, a dedicated Customer Support Specialist at your company, focused on assisting clients.
 
 Your Goal: Gather contact information and assist callers with their inquiries."
-                className="w-full h-32 px-3 py-2 bg-gray-800 border border-gray-700 rounded-md text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full h-32 px-3 py-2 bg-background border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-foreground"
               />
             </div>
           </div>
@@ -511,13 +534,13 @@ Your Goal: Gather contact information and assist callers with their inquiries."
         {/* Step 3: Phone Number */}
         {step === 3 && (
           <div className="space-y-4">
-            <h3 className="text-lg font-medium text-white">Phone Number</h3>
-            <p className="text-sm text-gray-300 mb-4">Select phone numbers for your agent (Max 5)</p>
+            <h3 className="text-lg font-medium text-foreground">Phone Number</h3>
+            <p className="text-sm text-muted-foreground mb-4">Select phone numbers for your agent (Max 5)</p>
 
             {/* Phone Number Selection */}
             <div>
               <div className="flex items-center justify-between mb-2">
-                <label className="block text-sm font-medium text-white">
+                <label className="block text-sm font-medium text-foreground">
                   Phone numbers (Max 5) / Number pool (Max 1)
                 </label>
                 {phoneNumbers.length === 0 && !loadingPhones && (
@@ -525,7 +548,7 @@ Your Goal: Gather contact information and assist callers with their inquiries."
                     href="https://app.gohighlevel.com/v2/location/settings/phone-numbers"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-blue-400 hover:text-blue-300"
+                    className="text-sm text-foreground hover:text-muted-foreground"
                   >
                     Buy New Number
                   </a>
@@ -538,13 +561,13 @@ Your Goal: Gather contact information and assist callers with their inquiries."
                   {selectedPhoneNumbers.map((number) => (
                     <div
                       key={number}
-                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm"
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-foreground text-background rounded-md text-sm"
                     >
                       <span>{number}</span>
                       <button
                         type="button"
                         onClick={() => handlePhoneNumberRemove(number)}
-                        className="hover:bg-blue-700 rounded-full p-0.5"
+                        className="hover:bg-muted rounded-full p-0.5"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -556,7 +579,7 @@ Your Goal: Gather contact information and assist callers with their inquiries."
               )}
               
               {loadingPhones ? (
-                <div className="text-sm text-gray-400">Loading phone numbers...</div>
+                <div className="text-sm text-muted-foreground">Loading phone numbers...</div>
               ) : phoneNumbers.length > 0 && selectedPhoneNumbers.length < 5 ? (
                 <>
                   <Select
@@ -575,24 +598,24 @@ Your Goal: Gather contact information and assist callers with their inquiries."
                   />
                 </>
               ) : selectedPhoneNumbers.length >= 5 ? (
-                <div className="text-sm text-gray-400 bg-gray-800 border border-gray-700 rounded-md p-3">
+                <div className="text-sm text-muted-foreground bg-muted border border-border rounded-md p-3">
                   Maximum 5 phone numbers selected
                 </div>
               ) : (
-                <div className="text-sm text-gray-400 bg-gray-800 border border-gray-700 rounded-md p-3">
+                <div className="text-sm text-muted-foreground bg-muted border border-border rounded-md p-3">
                   No phone numbers available.{' '}
                   <a
                     href="https://app.gohighlevel.com/v2/location/settings/phone-numbers"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-400 hover:text-blue-300"
+                    className="text-foreground hover:text-muted-foreground underline"
                   >
                     Buy a new number
                   </a>
                 </div>
               )}
 
-              <p className="text-xs text-gray-400 mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 You can select up to 5 phone numbers OR 1 number pool for each agent. Maximum 5 phone numbers can be selected.
               </p>
             </div>

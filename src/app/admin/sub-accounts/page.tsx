@@ -163,27 +163,28 @@ export default function SubAccountsPage() {
   }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-8">
+    <div className="p-6 space-y-6">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <Users className="w-6 h-6" />
             Sub-Accounts
           </h1>
-          <p className="text-gray-400 mt-1">
+          <p className="text-muted-foreground mt-1">
             Manage GHL sub-accounts and their access
           </p>
         </div>
-        <Button onClick={() => setShowCreateModal(true)} variant="primary">
-          <Plus className="w-4 h-4 mr-2" />
-            Add Sub-Account
-          </Button>
-        </div>
+        <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+          <Plus className="w-4 h-4" />
+          Add Sub-Account
+        </Button>
+      </div>
 
-        {/* Active Sub-Account Indicator */}
-        {activeSubAccount && (
-          <div className="bg-blue-500/10 border border-blue-500 rounded-lg p-4 mb-6">
-            <p className="text-blue-400">
+      {/* Active Sub-Account Indicator */}
+      {activeSubAccount && (
+        <Card className="border-foreground/30 bg-foreground/5">
+          <div className="p-6">
+            <p className="text-foreground">
               <strong>Currently viewing:</strong> {activeSubAccount.name}
               <Button
                 variant="ghost"
@@ -195,9 +196,10 @@ export default function SubAccountsPage() {
               </Button>
             </p>
           </div>
-        )}
+        </Card>
+      )}
 
-        {/* Sub-Accounts List */}
+      {/* Sub-Accounts List */}
         <div className="grid gap-4">
           {subAccounts.length === 0 ? (
             <Card className="text-center py-12">
@@ -353,7 +355,7 @@ export default function SubAccountsPage() {
               >
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Creating...' : 'Create Sub-Account'}
               </Button>
             </div>
@@ -424,7 +426,7 @@ export default function SubAccountsPage() {
               >
                 Cancel
               </Button>
-              <Button type="submit" variant="primary" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>

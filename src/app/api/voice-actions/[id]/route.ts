@@ -8,9 +8,10 @@ import { getGHLClientForRequest, supabaseAdmin } from '@/lib';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const clientResult = await getGHLClientForRequest(request);
     
     if (clientResult.error) {
@@ -20,8 +21,8 @@ export async function GET(
       );
     }
 
-    const { ghlClient } = clientResult;
-    const result = await ghlClient.getVoiceAction(params.id);
+    const ghlClient = clientResult.ghlClient!;
+    const result = await ghlClient.getVoiceAction(id);
     
     return NextResponse.json(result);
   } catch (error) {
@@ -40,9 +41,10 @@ export async function GET(
  */
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const clientResult = await getGHLClientForRequest(request);
     
     if (clientResult.error) {
@@ -52,10 +54,12 @@ export async function PUT(
       );
     }
 
-    const { ghlClient, subAccount, authUser } = clientResult;
+    const ghlClient = clientResult.ghlClient!;
+    const subAccount = clientResult.subAccount!;
+    const authUser = clientResult.authUser!;
     const body = await request.json();
 
-    const result = await ghlClient.updateVoiceAction(params.id, body);
+    const result = await ghlClient.updateVoiceAction(id, body);
 
     // Log activity if we have sub-account and user
     if (subAccount && authUser && result.id) {
@@ -66,7 +70,7 @@ export async function PUT(
         entity_type: 'contact' as const,
         entity_id: result.id,
         entity_name: `Voice Action: ${result.name || body.name}`,
-        details: { type: result.type },
+        details: { type: result.actionType },
       });
     }
 
@@ -87,9 +91,10 @@ export async function PUT(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const clientResult = await getGHLClientForRequest(request);
     
     if (clientResult.error) {
@@ -99,7 +104,9 @@ export async function DELETE(
       );
     }
 
-    const { ghlClient, subAccount, authUser } = clientResult;
+    const ghlClient = clientResult.ghlClient!;
+    const subAccount = clientResult.subAccount!;
+    const authUser = clientResult.authUser!;
     
     // Get agentId from query params (required by API)
     const { searchParams } = new URL(request.url);
@@ -112,7 +119,7 @@ export async function DELETE(
       );
     }
 
-    await ghlClient.deleteVoiceAction(params.id, agentId);
+    await ghlClient.deleteVoiceAction(id, agentId);
 
     // Log activity if we have sub-account and user
     if (subAccount && authUser) {
@@ -121,7 +128,7 @@ export async function DELETE(
         user_id: authUser.id,
         action: 'delete',
         entity_type: 'contact' as const,
-        entity_id: params.id,
+        entity_id: id,
         entity_name: `Voice Action`,
         details: { agentId },
       });

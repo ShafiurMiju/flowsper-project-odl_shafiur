@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { ghlClient } = clientResult;
+    const ghlClient = clientResult.ghlClient!;
 
     if (!ghlClient) {
       return NextResponse.json(
@@ -45,14 +45,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { ghlClient, subAccount, authUser } = clientResult;
-
-    if (!ghlClient) {
-      return NextResponse.json(
-        { error: 'GHL client not initialized' },
-        { status: 500 }
-      );
-    }
+    const ghlClient = clientResult.ghlClient!;
+    const subAccount = clientResult.subAccount!;
+    const authUser = clientResult.authUser!;
 
     const body = await request.json();
     console.log('📥 Received body:', JSON.stringify(body, null, 2));

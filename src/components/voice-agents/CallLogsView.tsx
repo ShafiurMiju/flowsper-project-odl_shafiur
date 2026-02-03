@@ -70,7 +70,7 @@ export function CallLogsView({ agents }: CallLogsViewProps) {
       {/* Filters */}
       <Card>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
+          <div className="px-6 flex items-center gap-2">
             <Filter className="w-4 h-4 text-gray-400" />
             <span className="text-sm text-gray-600">Filter by agent:</span>
           </div>

@@ -17,10 +17,10 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { ghlClient } = clientResult;
+    const ghlClient = clientResult.ghlClient!;
     const { id } = await params;
 
-    const result = await ghlClient.getVoiceAgentCalls(agentId);
+    const result = await ghlClient.getVoiceAgentCalls(id);
     return NextResponse.json(result);
   } catch (error) {
     console.error('Error fetching voice agent calls:', error);
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { ghlClient } = clientResult;
+    const ghlClient = clientResult.ghlClient!;
     const { id } = await params;
     const { phoneNumber, contactId } = await request.json();
 

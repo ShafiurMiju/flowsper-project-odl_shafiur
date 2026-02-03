@@ -18,7 +18,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { ghlClient } = clientResult;
+    const ghlClient = clientResult.ghlClient!;
     const { id } = await params;
     const result = await ghlClient.getContact(id);
     return NextResponse.json(result);
@@ -43,7 +43,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { ghlClient, subAccount, authUser } = clientResult;
+    const ghlClient = clientResult.ghlClient!;
+    const subAccount = clientResult.subAccount!;
+    const authUser = clientResult.authUser!;
     const { id } = await params;
     const body: Partial<CreateContactPayload> = await request.json();
 
@@ -99,7 +101,9 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { ghlClient, subAccount, authUser } = clientResult;
+    const ghlClient = clientResult.ghlClient!;
+    const subAccount = clientResult.subAccount!;
+    const authUser = clientResult.authUser!;
     const { id } = await params;
 
     // Get contact info before deletion for logging

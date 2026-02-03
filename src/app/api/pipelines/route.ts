@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { ghlClient } = clientResult;
+    const ghlClient = clientResult.ghlClient!;
     const result = await ghlClient.getPipelines();
     return NextResponse.json(result);
   } catch (error) {

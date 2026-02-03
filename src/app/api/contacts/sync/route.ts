@@ -13,10 +13,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { ghlClient, subAccount, authUser } = clientResult;
+    const ghlClient = clientResult.ghlClient!;
+    const subAccount = clientResult.subAccount!;
+    const authUser = clientResult.authUser!;
 
     // Fetch contacts from GHL
-    const { contacts } = await ghlClient.getContacts(100, 0);
+    const { contacts } = await ghlClient.getContacts(100);
 
     let synced = 0;
     let errors = 0;

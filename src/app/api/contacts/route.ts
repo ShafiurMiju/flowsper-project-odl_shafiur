@@ -14,19 +14,45 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { ghlClient, subAccount } = clientResult;
+    const ghlClient = clientResult.ghlClient!;
+    const subAccount = clientResult.subAccount!;
     const searchParams = request.nextUrl.searchParams;
-    const limit = parseInt(searchParams.get('limit') || '100');
     const search = searchParams.get('search');
 
-    let result;
+    let allContacts: any[] = [];
+
     if (search) {
-      result = await ghlClient.searchContacts(search, limit);
+      // For search, just return the search results
+      const result = await ghlClient.searchContacts(search, 100);
+      allContacts = result.contacts || [];
     } else {
-      result = await ghlClient.getContacts(limit);
+      // Fetch all contacts in batches of 100 using pagination
+      let page = 1;
+      let hasMore = true;
+      
+      while (hasMore) {
+        try {
+          const result = await ghlClient.getContacts(100, page);
+          const contacts = result.contacts || [];
+          
+          if (contacts.length === 0) {
+            hasMore = false;
+          } else {
+            allContacts = allContacts.concat(contacts);
+            // If we got less than 100, we've reached the end
+            if (contacts.length < 100) {
+              hasMore = false;
+            }
+            page++;
+          }
+        } catch (error) {
+          console.error(`Error fetching contacts page ${page}:`, error);
+          hasMore = false;
+        }
+      }
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json({ contacts: allContacts });
   } catch (error) {
     console.error('Error fetching contacts:', error);
     return NextResponse.json(
@@ -48,7 +74,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { ghlClient, subAccount } = clientResult;
+    const ghlClient = clientResult.ghlClient!;
+    const subAccount = clientResult.subAccount!;
     const body: CreateContactPayload = await request.json();
 
     // Create contact in GHL

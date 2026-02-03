@@ -8,7 +8,7 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl';
 }
 
 export function Modal({
@@ -41,6 +41,7 @@ export function Modal({
     md: 'max-w-md',
     lg: 'max-w-lg',
     xl: 'max-w-xl',
+    '2xl': 'max-w-2xl',
   };
 
   return (
@@ -54,14 +55,14 @@ export function Modal({
 
         {/* Modal */}
         <div
-          className={`relative w-full ${sizeStyles[size]} bg-gray-800 rounded-xl shadow-xl transform transition-all border border-gray-700`}
+          className={`relative w-full ${sizeStyles[size]} bg-card border border-border rounded-xl shadow-xl transform transition-all`}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-            <h3 className="text-lg font-semibold text-white">{title}</h3>
+          <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+            <h3 className="text-lg font-semibold text-foreground">{title}</h3>
             <button
               onClick={onClose}
-              className="p-1 text-gray-400 hover:text-gray-200 rounded-lg hover:bg-gray-700"
+              className="p-1 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted"
             >
               <X className="w-5 h-5" />
             </button>

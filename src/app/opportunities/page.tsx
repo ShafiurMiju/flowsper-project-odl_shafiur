@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Button, Card, CardHeader, Select } from '@/components/ui';
+import { Button, Card, CardHeader, Select, SkeletonCard } from '@/components/ui';
 import { OpportunityCard, OpportunityForm } from '@/components/opportunities';
 import {
   GHLOpportunity,
@@ -9,7 +9,8 @@ import {
   GHLContact,
   CreateOpportunityPayload,
 } from '@/types';
-import { Plus, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw, Target, TrendingUp, Kanban } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function OpportunitiesPage() {
   const [opportunities, setOpportunities] = useState<GHLOpportunity[]>([]);
@@ -204,55 +205,79 @@ export default function OpportunitiesPage() {
   );
 
   return (
-    <div>
+    <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Opportunities</h1>
-          <p className="text-gray-600 mt-1">
-            Manage your sales pipeline and deals
-          </p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-foreground rounded-xl flex items-center justify-center">
+            <Target className="w-6 h-6 text-background" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Opportunities</h1>
+            <p className="text-muted-foreground">
+              Manage your sales pipeline and deals
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="secondary" onClick={syncOpportunities} loading={syncing}>
-            <RefreshCw className={`w-4 h-4 mr-2 ${syncing ? 'animate-spin' : ''}`} />
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="secondary" 
+            onClick={syncOpportunities} 
+            loading={syncing}
+            className="gap-2"
+          >
+            <RefreshCw className={cn("w-4 h-4", syncing && "animate-spin")} />
             Sync
           </Button>
-          <Button onClick={() => setShowForm(true)}>
-            <Plus className="w-4 h-4 mr-2" />
+          <Button 
+            onClick={() => setShowForm(true)}
+            className="gap-2"
+          >
+            <Plus className="w-4 h-4" />
             Add Opportunity
           </Button>
         </div>
       </div>
 
       {/* Pipeline Selector */}
-      <Card className="mb-6">
-        <div className="flex items-center gap-4">
-          <Select
-            label="Pipeline"
-            value={selectedPipeline}
-            onChange={(e) => setSelectedPipeline(e.target.value)}
-            options={pipelines.map((p) => ({ value: p.id, label: p.name }))}
-            className="max-w-xs"
-          />
-          <div className="text-sm text-gray-600 mt-6">
-            {opportunities.length} opportunities in this pipeline
+      <Card className="border-border/50 shadow-sm">
+        <div className="px-6 flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Kanban className="w-5 h-5 text-muted-foreground" />
+            <Select
+              label=""
+              value={selectedPipeline}
+              onChange={(e) => setSelectedPipeline(e.target.value)}
+              options={pipelines.map((p) => ({ value: p.id, label: p.name }))}
+              className="min-w-[200px]"
+            />
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/50 rounded-lg">
+            <TrendingUp className="w-4 h-4 text-foreground" />
+            <span className="text-sm text-muted-foreground">
+              {opportunities.length} opportunities in this pipeline
+            </span>
           </div>
         </div>
       </Card>
 
       {/* Pipeline Board */}
       {loading ? (
-        <Card>
-          <div className="p-12 text-center">
-            <RefreshCw className="w-8 h-8 mx-auto text-gray-400 animate-spin" />
-            <p className="mt-4 text-gray-600">Loading opportunities...</p>
-          </div>
-        </Card>
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="w-80 flex-shrink-0">
+              <SkeletonCard />
+            </div>
+          ))}
+        </div>
       ) : !currentPipeline ? (
-        <Card>
+        <Card className="border-border/50 shadow-sm">
           <div className="p-12 text-center">
-            <p className="text-gray-600">No pipelines found. Create one in GoHighLevel first.</p>
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <Kanban className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">No pipelines found</h3>
+            <p className="text-muted-foreground">Create one in GoHighLevel first.</p>
           </div>
         </Card>
       ) : (
@@ -268,21 +293,23 @@ export default function OpportunitiesPage() {
               return (
                 <div
                   key={stage.id}
-                  className="w-80 bg-gray-100 rounded-lg p-4 flex-shrink-0"
+                  className="w-80 bg-muted/50 dark:bg-muted/20 rounded-xl p-4 flex-shrink-0 border border-border/50"
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, stage.id)}
                 >
                   <div className="mb-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-gray-900">
+                      <h3 className="font-semibold text-foreground">
                         {stage.name}
                       </h3>
-                      <span className="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded-full">
+                      <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-2 py-1 rounded-full font-medium">
                         {stageOpportunities.length}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500 mt-1">
-                      ${stageValue.toLocaleString()}
+                    <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
+                      <span className="text-green-600 dark:text-green-400 font-medium">
+                        ${stageValue.toLocaleString()}
+                      </span>
                     </p>
                   </div>
 
@@ -292,9 +319,10 @@ export default function OpportunitiesPage() {
                         key={opportunity.id}
                         draggable
                         onDragStart={() => handleDragStart(opportunity)}
-                        className={`cursor-move ${
-                          draggedOpportunity?.id === opportunity.id ? 'opacity-50' : ''
-                        }`}
+                        className={cn(
+                          "cursor-move transition-opacity",
+                          draggedOpportunity?.id === opportunity.id && "opacity-50"
+                        )}
                       >
                         <OpportunityCard
                           opportunity={opportunity}
@@ -307,7 +335,10 @@ export default function OpportunitiesPage() {
                     ))}
 
                     {stageOpportunities.length === 0 && (
-                      <div className="text-center py-8 text-gray-400 text-sm">
+                      <div className={cn(
+                        "text-center py-8 text-muted-foreground text-sm border-2 border-dashed border-border/50 rounded-lg",
+                        draggedOpportunity && "border-purple-500 bg-purple-50 dark:bg-purple-900/10"
+                      )}>
                         {draggedOpportunity ? 'Drop here' : 'No opportunities'}
                       </div>
                     )}
