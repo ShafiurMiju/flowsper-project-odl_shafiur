@@ -10,6 +10,7 @@ interface VoiceAgentFormProps {
   onSubmit: (data: CreateVoiceAgentPayload) => Promise<void>;
   initialData?: Partial<CreateVoiceAgentPayload>;
   mode: 'create' | 'edit';
+  onNavigateToKnowledgeTab?: () => void;
 }
 
 const LANGUAGES = [
@@ -66,12 +67,23 @@ export function VoiceAgentForm({
   onSubmit,
   initialData,
   mode,
+  onNavigateToKnowledgeTab,
 }: VoiceAgentFormProps) {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
   const [phoneNumbers, setPhoneNumbers] = useState<Array<{ value: string; label: string }>>([]);
   const [loadingPhones, setLoadingPhones] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  
+  // Knowledge base state
+  const [knowledgeBases, setKnowledgeBases] = useState<Array<{ value: string; label: string; description?: string }>>([]);
+  const [loadingKBs, setLoadingKBs] = useState(false);
+  const [showKBModal, setShowKBModal] = useState(false);
+  const [kbModalMode, setKBModalMode] = useState<'create' | 'edit'>('create');
+  const [editingKB, setEditingKB] = useState<{ id: string; name: string; description?: string } | null>(null);
+  const [kbFormData, setKBFormData] = useState({ name: '', description: '' });
+  const [savingKB, setSavingKB] = useState(false);
+  
   const [formData, setFormData] = useState<CreateVoiceAgentPayload>({
     agentName: '',
     businessName: '',
@@ -141,6 +153,148 @@ export function VoiceAgentForm({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, isOpen]);
+
+  // Fetch knowledge bases when reaching step 2
+  useEffect(() => {
+    if (isOpen && step === 2 && knowledgeBases.length === 0) {
+      fetchKnowledgeBases();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, isOpen]);
+
+  const fetchKnowledgeBases = async () => {
+    setLoadingKBs(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch('/api/knowledge-bases', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      
+      if (data.knowledgeBases && data.knowledgeBases.length > 0) {
+        const kbs = data.knowledgeBases.map((kb: { id: string; name: string; description?: string }) => ({
+          value: kb.id,
+          label: kb.name,
+          description: kb.description,
+        }));
+        setKnowledgeBases(kbs);
+      } else {
+        setKnowledgeBases([]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch knowledge bases:', error);
+      setKnowledgeBases([]);
+    } finally {
+      setLoadingKBs(false);
+    }
+  };
+
+  const handleCreateKB = () => {
+    // Close the modal and navigate to Knowledge tab
+    if (onNavigateToKnowledgeTab) {
+      onClose();
+      onNavigateToKnowledgeTab();
+    } else {
+      // Fallback to showing the modal if no navigation callback provided
+      setKBModalMode('create');
+      setEditingKB(null);
+      setKBFormData({ name: '', description: '' });
+      setShowKBModal(true);
+    }
+  };
+
+  const handleEditKB = (kbId: string) => {
+    const kb = knowledgeBases.find(k => k.value === kbId);
+    if (kb) {
+      setKBModalMode('edit');
+      setEditingKB({ id: kb.value, name: kb.label, description: kb.description });
+      setKBFormData({ name: kb.label, description: kb.description || '' });
+      setShowKBModal(true);
+    }
+  };
+
+  const handleDeleteKB = async (kbId: string) => {
+    if (!confirm('Are you sure you want to delete this knowledge base? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await fetch(`/api/knowledge-bases/${kbId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (response.ok) {
+        // Clear selection if deleted KB was selected
+        if (formData.knowledgeBaseId === kbId) {
+          handleChange('knowledgeBaseId', '');
+        }
+        await fetchKnowledgeBases();
+      } else {
+        alert('Failed to delete knowledge base');
+      }
+    } catch (error) {
+      console.error('Error deleting knowledge base:', error);
+      alert('Failed to delete knowledge base');
+    }
+  };
+
+  const handleSaveKB = async () => {
+    if (!kbFormData.name.trim()) {
+      alert('Name is required');
+      return;
+    }
+
+    setSavingKB(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      
+      if (kbModalMode === 'create') {
+        const response = await fetch('/api/knowledge-bases', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(kbFormData),
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          await fetchKnowledgeBases();
+          // Auto-select the new knowledge base
+          if (data.knowledgeBase?.id) {
+            handleChange('knowledgeBaseId', data.knowledgeBase.id);
+          }
+          setShowKBModal(false);
+        } else {
+          alert('Failed to create knowledge base');
+        }
+      } else {
+        const response = await fetch(`/api/knowledge-bases/${editingKB?.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(kbFormData),
+        });
+        
+        if (response.ok) {
+          await fetchKnowledgeBases();
+          setShowKBModal(false);
+        } else {
+          alert('Failed to update knowledge base');
+        }
+      }
+    } catch (error) {
+      console.error('Error saving knowledge base:', error);
+      alert('Failed to save knowledge base');
+    } finally {
+      setSavingKB(false);
+    }
+  };
 
   const fetchPhoneNumbers = async () => {
     setLoadingPhones(true);
@@ -470,28 +624,62 @@ export function VoiceAgentForm({
                 <label className="block text-sm font-medium text-foreground">
                   Select knowledge base
                 </label>
-                <a 
-                  href="#" 
+                <button 
+                  type="button"
                   className="text-sm text-foreground hover:text-muted-foreground"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    // TODO: Open knowledge base creation modal
-                    alert('Create New Knowledge Base - Feature coming soon');
-                  }}
+                  onClick={handleCreateKB}
                 >
-                  Create New ↗
-                </a>
+                  + Create New
+                </button>
               </div>
-              <Select
-                value={formData.knowledgeBaseId || ''}
-                onChange={(e) => handleChange('knowledgeBaseId', e.target.value)}
-                options={[
-                  { value: '', label: 'Select knowledge base for this agent' },
-                  { value: 'kb1', label: 'Customer Support KB' },
-                  { value: 'kb2', label: 'Product Information KB' },
-                  { value: 'kb3', label: 'FAQ Database' },
-                ]}
-              />
+              
+              {loadingKBs ? (
+                <div className="text-sm text-muted-foreground py-2">Loading knowledge bases...</div>
+              ) : (
+                <div className="space-y-2">
+                  <Select
+                    value={formData.knowledgeBaseId || ''}
+                    onChange={(e) => handleChange('knowledgeBaseId', e.target.value)}
+                    options={[
+                      { value: '', label: 'Select knowledge base for this agent' },
+                      ...knowledgeBases.map(kb => ({ value: kb.value, label: kb.label })),
+                    ]}
+                  />
+                  
+                  {/* Edit/Delete buttons when a KB is selected */}
+                  {formData.knowledgeBaseId && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleEditKB(formData.knowledgeBaseId!)}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteKB(formData.knowledgeBaseId!)}
+                        className="text-xs text-red-500 hover:text-red-600"
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  )}
+                  
+                  {knowledgeBases.length === 0 && !loadingKBs && (
+                    <p className="text-xs text-muted-foreground">
+                      No knowledge bases found.{' '}
+                      <button 
+                        type="button" 
+                        onClick={handleCreateKB}
+                        className="text-foreground underline"
+                      >
+                        Create one
+                      </button>
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Prompt */}
@@ -623,7 +811,7 @@ Your Goal: Gather contact information and assist callers with their inquiries."
         )}
 
         {/* Navigation Buttons */}
-        <div className="flex justify-between pt-4 border-t border-gray-700">
+        <div className="flex justify-between pt-4 border-t border-border">
           <div>
             {step > 1 && (
               <Button type="button" variant="secondary" onClick={prevStep}>
@@ -652,6 +840,72 @@ Your Goal: Gather contact information and assist callers with their inquiries."
           </div>
         </div>
       </form>
+
+      {/* Knowledge Base Modal */}
+      {showKBModal && (
+        <div className="fixed inset-0 z-[60] overflow-y-auto">
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div
+              className="fixed inset-0 bg-black/50"
+              onClick={() => setShowKBModal(false)}
+            />
+            <div className="relative w-full max-w-md bg-card border border-border rounded-xl shadow-xl">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                <h3 className="text-lg font-semibold text-foreground">
+                  {kbModalMode === 'create' ? 'Create Knowledge Base' : 'Edit Knowledge Base'}
+                </h3>
+                <button
+                  onClick={() => setShowKBModal(false)}
+                  className="p-1 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div className="px-6 py-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={kbFormData.name}
+                    onChange={(e) => setKBFormData(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="My Knowledge Base"
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-foreground bg-background text-foreground placeholder:text-muted-foreground"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={kbFormData.description}
+                    onChange={(e) => setKBFormData(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Description of this knowledge base..."
+                    rows={3}
+                    className="w-full px-3 py-2 border border-border rounded-md focus:outline-none focus:ring-2 focus:ring-foreground bg-background text-foreground placeholder:text-muted-foreground"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 px-6 py-4 border-t border-border">
+                <Button type="button" variant="secondary" onClick={() => setShowKBModal(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={handleSaveKB}
+                  loading={savingKB}
+                  disabled={savingKB || !kbFormData.name.trim()}
+                >
+                  {kbModalMode === 'create' ? 'Create' : 'Update'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }

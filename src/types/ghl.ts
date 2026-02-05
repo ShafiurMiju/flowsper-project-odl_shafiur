@@ -417,3 +417,98 @@ export interface UpdateVoiceActionPayload extends Partial<Omit<CreateVoiceAction
   name: string;
   actionParameters: GHLVoiceAction['actionParameters'];
 }
+
+// GHL Knowledge Base Types
+export interface GHLKnowledgeBase {
+  id: string;
+  locationId: string;
+  name: string;
+  description?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateKnowledgeBasePayload {
+  name: string;
+  description?: string;
+  locationId?: string; // Will be injected by GHL client
+}
+
+export interface UpdateKnowledgeBasePayload {
+  name?: string;
+  description?: string;
+}
+
+export interface GHLKnowledgeBasesResponse {
+  success: boolean;
+  data: {
+    knowledgeBases: GHLKnowledgeBase[];
+    hasMore?: boolean;
+    lastKnowledgeBaseId?: string;
+  };
+}
+
+// Knowledge Base Website/Crawler Types
+export interface GHLWebsiteUrl {
+  id: string;
+  url: string;
+  status: 'discovered' | 'trained' | 'failed';
+  title?: string;
+  crawledAt?: string;
+  trainedAt?: string;
+  error?: string;
+}
+
+export interface GHLWebsiteUrlsResponse {
+  success: boolean;
+  data: {
+    urls: GHLWebsiteUrl[];
+    total: number;
+  };
+}
+
+export interface DiscoverWebsitePayload {
+  url: string;
+}
+
+export interface TrainUrlsPayload {
+  urlIds: string[];
+}
+
+export interface GHLCrawlingStatus {
+  status: 'idle' | 'discovering' | 'training' | 'completed' | 'failed';
+  progress?: number;
+  totalUrls?: number;
+  processedUrls?: number;
+  message?: string;
+  startedAt?: string;
+  completedAt?: string;
+}
+
+// Knowledge Base FAQ Types
+export interface GHLFAQ {
+  id: string;
+  knowledgeBaseId: string;
+  question: string;
+  answer: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateFAQPayload {
+  question: string;
+  answer: string;
+}
+
+export interface UpdateFAQPayload {
+  question?: string;
+  answer?: string;
+}
+
+export interface GHLFAQsResponse {
+  success: boolean;
+  data: {
+    faqs: GHLFAQ[];
+    total: number;
+  };
+}

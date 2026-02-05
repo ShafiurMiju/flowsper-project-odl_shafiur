@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createGHLClient } from '@/lib/ghl';
+import { getGHLClientForRequest } from '@/lib';
 import { VoiceActionType } from '@/types';
 
 // GET /api/voice-agents/call-logs - List call logs
 export async function GET(request: NextRequest) {
   try {
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const clientResult = await getGHLClientForRequest(request);
+    
+    if (clientResult.error) {
+      return NextResponse.json(
+        { error: clientResult.error },
+        { status: clientResult.status || 500 }
+      );
     }
 
-    const locationId = process.env.GHL_LOCATION_ID || '';
-    const client = createGHLClient(token, locationId);
+    const ghlClient = clientResult.ghlClient!;
 
     const { searchParams } = new URL(request.url);
     
@@ -58,12 +61,12 @@ export async function GET(request: NextRequest) {
     const pageSize = searchParams.get('pageSize');
     if (pageSize) options.pageSize = parseInt(pageSize);
 
-    const response = await client.getVoiceCallLogs(options);
+    const response = await ghlClient.getVoiceCallLogs(options);
     return NextResponse.json(response);
   } catch (error) {
     console.error('Error fetching call logs:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch call logs' },
+      { error: 'Failed to fetch call logs', details: String(error) },
       { status: 500 }
     );
   }

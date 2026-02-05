@@ -560,10 +560,233 @@ export class GHLClient {
    * List all knowledge bases (paginated)
    * @see https://marketplace.gohighlevel.com/docs/ghl/knowledge-base/list-all-knowledge-bases-paginated
    */
-  async getKnowledgeBases(page = 1, limit = 50): Promise<any> {
+  async getKnowledgeBases(limit = 20, lastKnowledgeBaseId?: string): Promise<any> {
+    let url = `/knowledge-bases/?locationId=${this.locationId}&limit=${limit}`;
+    if (lastKnowledgeBaseId) {
+      url += `&lastKnowledgeBaseId=${lastKnowledgeBaseId}`;
+    }
+    return this.requestWithVersion(url, '2021-04-15');
+  }
+
+  /**
+   * Get knowledge base by ID
+   * @see https://marketplace.gohighlevel.com/docs/ghl/knowledge-base/get-knowledge-base-by-id
+   */
+  async getKnowledgeBase(knowledgeBaseId: string): Promise<any> {
     return this.requestWithVersion(
-      `/voice-ai/knowledge-bases?locationId=${this.locationId}&page=${page}&limit=${limit}`,
+      `/knowledge-bases/${knowledgeBaseId}`,
       '2021-04-15'
+    );
+  }
+
+  /**
+   * Create a new knowledge base
+   * @see https://marketplace.gohighlevel.com/docs/ghl/knowledge-base/create-knowledge-base
+   */
+  async createKnowledgeBase(payload: { name: string; description?: string }): Promise<any> {
+    return this.requestWithVersion(
+      `/knowledge-bases/`,
+      '2021-04-15',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          ...payload,
+          locationId: this.locationId,
+        }),
+      }
+    );
+  }
+
+  /**
+   * Update a knowledge base
+   * @see https://marketplace.gohighlevel.com/docs/ghl/knowledge-base/update-knowledge-base
+   */
+  async updateKnowledgeBase(
+    knowledgeBaseId: string,
+    payload: { name?: string; description?: string }
+  ): Promise<any> {
+    return this.requestWithVersion(
+      `/knowledge-bases/${knowledgeBaseId}`,
+      '2021-04-15',
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      }
+    );
+  }
+
+  /**
+   * Delete a knowledge base
+   * @see https://marketplace.gohighlevel.com/docs/ghl/knowledge-base/delete-knowledge-base
+   */
+  async deleteKnowledgeBase(knowledgeBaseId: string): Promise<any> {
+    return this.requestWithVersion(
+      `/knowledge-bases/${knowledgeBaseId}`,
+      '2021-04-15',
+      {
+        method: 'DELETE',
+      }
+    );
+  }
+
+  // ==================== KNOWLEDGE BASE - WEBSITE/CRAWLER ====================
+
+  /**
+   * Get all website URLs for a knowledge base
+   * @see https://marketplace.gohighlevel.com/docs/ghl/knowledge-base/get-all-website-urls-data-by-knowledge-base
+   */
+  async getWebsiteUrls(knowledgeBaseId: string): Promise<any> {
+    return this.requestWithVersion(
+      `/knowledge-bases/crawler?knowledgeBaseId=${knowledgeBaseId}&locationId=${this.locationId}`,
+      '2021-04-15'
+    );
+  }
+
+  /**
+   * Discover website URLs for a knowledge base
+   * @see https://marketplace.gohighlevel.com/docs/ghl/knowledge-base/discover-website
+   */
+  async discoverWebsite(
+    knowledgeBaseId: string,
+    payload: { url: string }
+  ): Promise<any> {
+    return this.requestWithVersion(
+      `/knowledge-bases/crawler`,
+      '2021-04-15',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          locationId: this.locationId,
+          knowledgeBaseId,
+          url: payload.url,
+          option: 'Exact', // Default to Exact mode
+        }),
+      }
+    );
+  }
+
+  /**
+   * Train discovered URLs for a knowledge base
+   * @see https://marketplace.gohighlevel.com/docs/ghl/knowledge-base/train-discovered-urls
+   */
+  async trainUrls(
+    knowledgeBaseId: string,
+    payload: { urlIds: string[]; operationId?: string }
+  ): Promise<any> {
+    return this.requestWithVersion(
+      `/knowledge-bases/crawler/train`,
+      '2021-04-15',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          locationId: this.locationId,
+          knowledgeBaseId,
+          urlIds: payload.urlIds,
+          operationId: payload.operationId || '',
+        }),
+      }
+    );
+  }
+
+  /**
+   * Get crawling status for the latest operation
+   * @see https://marketplace.gohighlevel.com/docs/ghl/knowledge-base/get-crawling-status-for-latest-operation
+   */
+  async getCrawlingStatus(knowledgeBaseId: string, operationId: string): Promise<any> {
+    return this.requestWithVersion(
+      `/knowledge-bases/crawler/status?locationId=${this.locationId}&knowledgeBaseId=${knowledgeBaseId}&operationId=${operationId}`,
+      '2021-04-15'
+    );
+  }
+
+  /**
+   * Delete trained URLs from a knowledge base
+   * @see https://marketplace.gohighlevel.com/docs/ghl/knowledge-base/delete-trained-urls-for-knowledge-base
+   */
+  async deleteUrls(
+    knowledgeBaseId: string,
+    payload: { urlIds: string[] }
+  ): Promise<any> {
+    return this.requestWithVersion(
+      `/knowledge-bases/crawler`,
+      '2021-04-15',
+      {
+        method: 'DELETE',
+        body: JSON.stringify({
+          locationId: this.locationId,
+          knowledgeBaseId,
+          urlIds: payload.urlIds,
+        }),
+      }
+    );
+  }
+
+  // ==================== KNOWLEDGE BASE - FAQ ====================
+
+  /**
+   * List FAQs for a knowledge base
+   * @see https://marketplace.gohighlevel.com/docs/ghl/knowledge-base/list
+   */
+  async getFAQs(knowledgeBaseId: string): Promise<any> {
+    return this.requestWithVersion(
+      `/knowledge-bases/faqs?knowledgeBaseId=${knowledgeBaseId}&locationId=${this.locationId}`,
+      '2021-04-15'
+    );
+  }
+
+  /**
+   * Create a FAQ for a knowledge base
+   * @see https://marketplace.gohighlevel.com/docs/ghl/knowledge-base/create
+   */
+  async createFAQ(
+    knowledgeBaseId: string,
+    payload: { question: string; answer: string }
+  ): Promise<any> {
+    return this.requestWithVersion(
+      `/knowledge-bases/faqs`,
+      '2021-04-15',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          locationId: this.locationId,
+          knowledgeBaseId,
+          question: payload.question,
+          answer: payload.answer,
+        }),
+      }
+    );
+  }
+
+  /**
+   * Update a FAQ
+   * @see https://marketplace.gohighlevel.com/docs/ghl/knowledge-base/update
+   */
+  async updateFAQ(
+    knowledgeBaseId: string,
+    faqId: string,
+    payload: { question?: string; answer?: string }
+  ): Promise<any> {
+    return this.requestWithVersion(
+      `/knowledge-bases/faqs/${faqId}`,
+      '2021-04-15',
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      }
+    );
+  }
+
+  /**
+   * Delete a FAQ
+   * @see https://marketplace.gohighlevel.com/docs/ghl/knowledge-base/delete
+   */
+  async deleteFAQ(knowledgeBaseId: string, faqId: string): Promise<any> {
+    return this.requestWithVersion(
+      `/knowledge-bases/faqs/${faqId}`,
+      '2021-04-15',
+      {
+        method: 'DELETE',
+      }
     );
   }
 
