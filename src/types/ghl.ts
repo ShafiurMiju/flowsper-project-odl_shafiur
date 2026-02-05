@@ -512,3 +512,136 @@ export interface GHLFAQsResponse {
     total: number;
   };
 }
+
+// ==================== CONVERSATION AI AGENTS ====================
+
+export type ConversationAIAgentMode = 'off' | 'suggestive' | 'auto-pilot';
+export type ConversationAIChannel = 'IG' | 'FB' | 'SMS' | 'WebChat' | 'WhatsApp' | 'Live_Chat';
+export type ConversationAIWaitTimeUnit = 'minutes' | 'seconds';
+export type ConversationAISleepTimeUnit = 'hours' | 'minutes' | 'seconds';
+
+// Action types for Conversation AI
+export type ConversationAIActionType = 
+  | 'triggerWorkflow' 
+  | 'updateContactField' 
+  | 'appointmentBooking' 
+  | 'stopBot' 
+  | 'humanHandOver' 
+  | 'advancedFollowup' 
+  | 'transferBot';
+
+export interface GHLConversationAIAction {
+  id: string;
+  type: ConversationAIActionType;
+  name: string;
+  details: {
+    workflowIds?: string[];
+    triggerCondition?: string;
+    triggerMessage?: string;
+    // For updateContactField
+    fieldKey?: string;
+    fieldValue?: string;
+    // For appointmentBooking
+    calendarId?: string;
+    // For transferBot
+    targetAgentId?: string;
+    // For advancedFollowup
+    followupDelay?: number;
+    followupMessage?: string;
+  };
+}
+
+export interface CreateConversationAIActionPayload {
+  type: ConversationAIActionType;
+  name: string;
+  details: {
+    workflowIds?: string[];
+    triggerCondition?: string;
+    triggerMessage?: string;
+    fieldKey?: string;
+    fieldValue?: string;
+    calendarId?: string;
+    targetAgentId?: string;
+    followupDelay?: number;
+    followupMessage?: string;
+  };
+}
+
+export interface UpdateConversationAIActionPayload extends Partial<CreateConversationAIActionPayload> {}
+
+// Conversation AI Agent
+export interface GHLConversationAIAgent {
+  id: string;
+  name: string;
+  businessName?: string;
+  mode: ConversationAIAgentMode;
+  channels: ConversationAIChannel[];
+  isPrimary: boolean;
+  waitTime: number;
+  waitTimeUnit: ConversationAIWaitTimeUnit;
+  sleepEnabled: boolean;
+  sleepTime?: number;
+  sleepTimeUnit?: ConversationAISleepTimeUnit;
+  personality?: string;
+  goal?: string;
+  instructions?: string;
+  autoPilotMaxMessages: number;
+  knowledgeBaseIds?: string[];
+  actions?: GHLConversationAIAction[];
+  respondToImages?: boolean;
+  respondToAudio?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateConversationAIAgentPayload {
+  name: string;
+  businessName?: string;
+  mode?: ConversationAIAgentMode;
+  channels?: ConversationAIChannel[];
+  isPrimary?: boolean;
+  waitTime?: number;
+  waitTimeUnit?: ConversationAIWaitTimeUnit;
+  sleepEnabled?: boolean;
+  sleepTime?: number;
+  sleepTimeUnit?: ConversationAISleepTimeUnit;
+  personality: string;
+  goal: string;
+  instructions: string;
+  autoPilotMaxMessages?: number;
+  knowledgeBaseIds?: string[];
+  respondToImages?: boolean;
+  respondToAudio?: boolean;
+}
+
+export interface UpdateConversationAIAgentPayload {
+  name?: string;
+  businessName?: string;
+  mode?: ConversationAIAgentMode;
+  channels?: ConversationAIChannel[];
+  isPrimary?: boolean;
+  waitTime?: number;
+  waitTimeUnit?: ConversationAIWaitTimeUnit;
+  sleepEnabled?: boolean;
+  sleepTime?: number;
+  sleepTimeUnit?: ConversationAISleepTimeUnit;
+  personality?: string;
+  goal?: string;
+  instructions?: string;
+  autoPilotMaxMessages?: number;
+  knowledgeBaseIds?: string[];
+  respondToImages?: boolean;
+  respondToAudio?: boolean;
+}
+
+export interface GHLConversationAIAgentsResponse {
+  agents: GHLConversationAIAgent[];
+  totalCount: number;
+  count: number;
+}
+
+export interface GHLConversationAIActionsResponse {
+  data: GHLConversationAIAction[];
+  success: boolean;
+}
+

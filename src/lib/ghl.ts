@@ -25,6 +25,14 @@ import {
   VoiceActionType,
   GHLPhoneNumber,
   GHLPhoneNumbersResponse,
+  GHLConversationAIAgent,
+  GHLConversationAIAgentsResponse,
+  CreateConversationAIAgentPayload,
+  UpdateConversationAIAgentPayload,
+  GHLConversationAIAction,
+  GHLConversationAIActionsResponse,
+  CreateConversationAIActionPayload,
+  UpdateConversationAIActionPayload,
 } from '@/types';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
@@ -783,6 +791,162 @@ export class GHLClient {
   async deleteFAQ(knowledgeBaseId: string, faqId: string): Promise<any> {
     return this.requestWithVersion(
       `/knowledge-bases/faqs/${faqId}`,
+      '2021-04-15',
+      {
+        method: 'DELETE',
+      }
+    );
+  }
+
+  // ==================== CONVERSATION AI AGENTS ====================
+
+  /**
+   * Search/List Conversation AI agents for a location
+   * @see https://marketplace.gohighlevel.com/docs/ghl/conversation-ai/search-agent
+   */
+  async searchConversationAIAgents(options?: { 
+    query?: string; 
+    limit?: number; 
+    startAfter?: string;
+  }): Promise<GHLConversationAIAgentsResponse> {
+    const params = new URLSearchParams();
+    if (options?.query) params.append('query', options.query);
+    if (options?.limit) params.append('limit', String(options.limit));
+    if (options?.startAfter) params.append('startAfter', options.startAfter);
+    
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    return this.requestWithVersion<GHLConversationAIAgentsResponse>(
+      `/conversation-ai/agents/search${queryString}`,
+      '2021-04-15'
+    );
+  }
+
+  /**
+   * Get a single Conversation AI agent
+   * @see https://marketplace.gohighlevel.com/docs/ghl/conversation-ai/get-agent
+   */
+  async getConversationAIAgent(agentId: string): Promise<GHLConversationAIAgent> {
+    return this.requestWithVersion<GHLConversationAIAgent>(
+      `/conversation-ai/agents/${agentId}`,
+      '2021-04-15'
+    );
+  }
+
+  /**
+   * Create a new Conversation AI agent
+   * @see https://marketplace.gohighlevel.com/docs/ghl/conversation-ai/create-agent
+   */
+  async createConversationAIAgent(data: CreateConversationAIAgentPayload): Promise<GHLConversationAIAgent> {
+    return this.requestWithVersion<GHLConversationAIAgent>(
+      '/conversation-ai/agents',
+      '2021-04-15',
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  /**
+   * Update a Conversation AI agent
+   * @see https://marketplace.gohighlevel.com/docs/ghl/conversation-ai/update-agent
+   */
+  async updateConversationAIAgent(
+    agentId: string,
+    data: UpdateConversationAIAgentPayload
+  ): Promise<GHLConversationAIAgent> {
+    return this.requestWithVersion<GHLConversationAIAgent>(
+      `/conversation-ai/agents/${agentId}`,
+      '2021-04-15',
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  /**
+   * Delete a Conversation AI agent
+   * @see https://marketplace.gohighlevel.com/docs/ghl/conversation-ai/delete-agent
+   */
+  async deleteConversationAIAgent(agentId: string): Promise<{ success: boolean; id: string }> {
+    return this.requestWithVersion<{ success: boolean; id: string }>(
+      `/conversation-ai/agents/${agentId}`,
+      '2021-04-15',
+      {
+        method: 'DELETE',
+      }
+    );
+  }
+
+  // ==================== CONVERSATION AI ACTIONS ====================
+
+  /**
+   * List actions for an agent
+   * @see https://marketplace.gohighlevel.com/docs/ghl/conversation-ai/list-actions
+   */
+  async listConversationAIActions(agentId: string): Promise<GHLConversationAIActionsResponse> {
+    return this.requestWithVersion<GHLConversationAIActionsResponse>(
+      `/conversation-ai/agents/${agentId}/actions/list`,
+      '2021-04-15'
+    );
+  }
+
+  /**
+   * Get a single action
+   * @see https://marketplace.gohighlevel.com/docs/ghl/conversation-ai/get-action-by-id
+   */
+  async getConversationAIAction(agentId: string, actionId: string): Promise<{ data: GHLConversationAIAction; success: boolean }> {
+    return this.requestWithVersion<{ data: GHLConversationAIAction; success: boolean }>(
+      `/conversation-ai/agents/${agentId}/actions/${actionId}`,
+      '2021-04-15'
+    );
+  }
+
+  /**
+   * Create/Attach an action to an agent
+   * @see https://marketplace.gohighlevel.com/docs/ghl/conversation-ai/create-action
+   */
+  async createConversationAIAction(
+    agentId: string,
+    data: CreateConversationAIActionPayload
+  ): Promise<{ data: GHLConversationAIAction; success: boolean }> {
+    return this.requestWithVersion<{ data: GHLConversationAIAction; success: boolean }>(
+      `/conversation-ai/agents/${agentId}/actions`,
+      '2021-04-15',
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  /**
+   * Update an action
+   * @see https://marketplace.gohighlevel.com/docs/ghl/conversation-ai/update-action
+   */
+  async updateConversationAIAction(
+    agentId: string,
+    actionId: string,
+    data: UpdateConversationAIActionPayload
+  ): Promise<{ data: GHLConversationAIAction; success: boolean }> {
+    return this.requestWithVersion<{ data: GHLConversationAIAction; success: boolean }>(
+      `/conversation-ai/agents/${agentId}/actions/${actionId}`,
+      '2021-04-15',
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  /**
+   * Delete an action
+   * @see https://marketplace.gohighlevel.com/docs/ghl/conversation-ai/delete-action
+   */
+  async deleteConversationAIAction(agentId: string, actionId: string): Promise<{ success: boolean }> {
+    return this.requestWithVersion<{ success: boolean }>(
+      `/conversation-ai/agents/${agentId}/actions/${actionId}`,
       '2021-04-15',
       {
         method: 'DELETE',
