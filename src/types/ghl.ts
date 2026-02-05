@@ -645,3 +645,359 @@ export interface GHLConversationAIActionsResponse {
   success: boolean;
 }
 
+// ==================== CALENDAR TYPES ====================
+
+// Calendar Types
+export type CalendarType = 'round_robin' | 'event' | 'class_booking' | 'collective' | 'service_booking' | 'personal';
+export type CalendarWidgetType = 'default' | 'classic';
+export type CalendarEventType = 'RoundRobin_OptimizeForAvailability' | 'RoundRobin_OptimizeForEqualDistribution';
+export type CalendarTimeUnit = 'mins' | 'hours';
+export type CalendarBookingUnit = 'hours' | 'days' | 'weeks' | 'months';
+export type CalendarFormSubmitType = 'RedirectURL' | 'ThankYouMessage';
+export type CalendarGuestType = 'count_only' | 'collect_detail';
+export type AppointmentStatus = 'new' | 'confirmed' | 'cancelled' | 'showed' | 'noshow' | 'invalid' | 'active' | 'completed';
+export type MeetingLocationType = 'custom' | 'zoom' | 'gmeet' | 'phone' | 'address' | 'ms_teams' | 'google';
+
+// Calendar Open Hours
+export interface CalendarOpenHours {
+  daysOfTheWeek: number[];
+  hours: {
+    openHour: number;
+    openMinute: number;
+    closeHour: number;
+    closeMinute: number;
+  }[];
+}
+
+// Calendar Availability
+export interface CalendarAvailability {
+  id?: string;
+  date: string;
+  hours: {
+    openHour: number;
+    openMinute: number;
+    closeHour: number;
+    closeMinute: number;
+  }[];
+  deleted?: boolean;
+}
+
+// Location Configuration
+export interface CalendarLocationConfiguration {
+  kind: 'custom' | 'zoom' | 'gmeet' | 'phone' | 'address' | 'ms_teams' | 'google';
+  location?: string;
+}
+
+// Team Member
+export interface CalendarTeamMember {
+  userId: string;
+  priority?: number;
+  isPrimary?: boolean;
+  locationConfigurations?: CalendarLocationConfiguration[];
+}
+
+// Recurring Config
+export interface CalendarRecurringConfig {
+  freq: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+  count?: number;
+  bookingOption?: 'skip' | 'book';
+  bookingOverlapDefaultStatus?: 'confirmed' | 'pending';
+}
+
+// Look Busy Config
+export interface CalendarLookBusyConfig {
+  enabled: boolean;
+  LookBusyPercentage?: number;
+}
+
+// Calendar Interface
+export interface GHLCalendar {
+  id: string;
+  locationId: string;
+  name: string;
+  description?: string;
+  slug?: string;
+  widgetSlug?: string;
+  calendarType?: CalendarType;
+  widgetType?: CalendarWidgetType;
+  eventType?: CalendarEventType;
+  eventTitle?: string;
+  eventColor?: string;
+  isActive?: boolean;
+  groupId?: string;
+  teamMembers?: CalendarTeamMember[];
+  slotDuration?: number;
+  slotDurationUnit?: CalendarTimeUnit;
+  slotInterval?: number;
+  slotIntervalUnit?: CalendarTimeUnit;
+  slotBuffer?: number;
+  slotBufferUnit?: CalendarTimeUnit;
+  preBuffer?: number;
+  preBufferUnit?: CalendarTimeUnit;
+  appoinmentPerSlot?: number;
+  appoinmentPerDay?: number;
+  allowBookingAfter?: number;
+  allowBookingAfterUnit?: CalendarBookingUnit;
+  allowBookingFor?: number;
+  allowBookingForUnit?: CalendarBookingUnit;
+  openHours?: CalendarOpenHours[];
+  enableRecurring?: boolean;
+  recurring?: CalendarRecurringConfig;
+  formId?: string;
+  stickyContact?: boolean;
+  isLivePaymentMode?: boolean;
+  autoConfirm?: boolean;
+  shouldSendAlertEmailsToAssignedMember?: boolean;
+  alertEmail?: string;
+  googleInvitationEmails?: boolean;
+  allowReschedule?: boolean;
+  allowCancellation?: boolean;
+  shouldAssignContactToTeamMember?: boolean;
+  shouldSkipAssigningContactForExisting?: boolean;
+  notes?: string;
+  pixelId?: string;
+  formSubmitType?: CalendarFormSubmitType;
+  formSubmitRedirectURL?: string;
+  formSubmitThanksMessage?: string;
+  availabilityType?: 0 | 1 | null;
+  availabilities?: CalendarAvailability[];
+  guestType?: CalendarGuestType;
+  consentLabel?: string;
+  calendarCoverImage?: string;
+  lookBusyConfig?: CalendarLookBusyConfig;
+  locationConfigurations?: CalendarLocationConfiguration[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateCalendarPayload {
+  locationId: string;
+  name: string;
+  description?: string;
+  slug?: string;
+  widgetSlug?: string;
+  calendarType?: CalendarType;
+  widgetType?: CalendarWidgetType;
+  eventType?: CalendarEventType;
+  eventTitle?: string;
+  eventColor?: string;
+  isActive?: boolean;
+  groupId?: string;
+  teamMembers?: CalendarTeamMember[];
+  slotDuration?: number;
+  slotDurationUnit?: CalendarTimeUnit;
+  slotInterval?: number;
+  slotIntervalUnit?: CalendarTimeUnit;
+  slotBuffer?: number;
+  slotBufferUnit?: CalendarTimeUnit;
+  preBuffer?: number;
+  preBufferUnit?: CalendarTimeUnit;
+  appoinmentPerSlot?: number;
+  appoinmentPerDay?: number;
+  allowBookingAfter?: number;
+  allowBookingAfterUnit?: CalendarBookingUnit;
+  allowBookingFor?: number;
+  allowBookingForUnit?: CalendarBookingUnit;
+  openHours?: CalendarOpenHours[];
+  enableRecurring?: boolean;
+  recurring?: CalendarRecurringConfig;
+  formId?: string;
+  stickyContact?: boolean;
+  isLivePaymentMode?: boolean;
+  autoConfirm?: boolean;
+  shouldSendAlertEmailsToAssignedMember?: boolean;
+  alertEmail?: string;
+  googleInvitationEmails?: boolean;
+  allowReschedule?: boolean;
+  allowCancellation?: boolean;
+  shouldAssignContactToTeamMember?: boolean;
+  shouldSkipAssigningContactForExisting?: boolean;
+  notes?: string;
+  pixelId?: string;
+  formSubmitType?: CalendarFormSubmitType;
+  formSubmitRedirectURL?: string;
+  formSubmitThanksMessage?: string;
+  availabilityType?: 0 | 1 | null;
+  availabilities?: CalendarAvailability[];
+  guestType?: CalendarGuestType;
+  consentLabel?: string;
+  calendarCoverImage?: string;
+  lookBusyConfig?: CalendarLookBusyConfig;
+  locationConfigurations?: CalendarLocationConfiguration[];
+}
+
+export interface UpdateCalendarPayload extends Partial<Omit<CreateCalendarPayload, 'locationId'>> {}
+
+export interface GHLCalendarsResponse {
+  calendars: GHLCalendar[];
+}
+
+export interface GHLCalendarResponse {
+  calendar: GHLCalendar;
+}
+
+// Calendar Group Types
+export interface GHLCalendarGroup {
+  id: string;
+  locationId: string;
+  name: string;
+  description?: string;
+  slug?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateCalendarGroupPayload {
+  locationId: string;
+  name: string;
+  description: string;
+  slug: string;
+  isActive?: boolean;
+}
+
+export interface UpdateCalendarGroupPayload {
+  name: string;
+  description: string;
+  slug: string;
+}
+
+export interface GHLCalendarGroupsResponse {
+  groups: GHLCalendarGroup[];
+}
+
+export interface GHLCalendarGroupResponse {
+  group: GHLCalendarGroup;
+}
+
+// Appointment Types
+export interface GHLAppointment {
+  id: string;
+  calendarId: string;
+  locationId: string;
+  contactId: string;
+  startTime: string;
+  endTime: string;
+  title?: string;
+  description?: string;
+  address?: string;
+  appointmentStatus?: AppointmentStatus;
+  assignedUserId?: string;
+  meetingLocationType?: MeetingLocationType;
+  meetingLocationId?: string;
+  isRecurring?: boolean;
+  rrule?: string;
+  masterEventId?: string;
+  contact?: GHLContact;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreateAppointmentPayload {
+  calendarId: string;
+  locationId: string;
+  contactId: string;
+  startTime: string;
+  endTime?: string;
+  title?: string;
+  description?: string;
+  address?: string;
+  appointmentStatus?: AppointmentStatus;
+  assignedUserId?: string;
+  meetingLocationType?: MeetingLocationType;
+  meetingLocationId?: string;
+  overrideLocationConfig?: boolean;
+  ignoreDateRange?: boolean;
+  toNotify?: boolean;
+  ignoreFreeSlotValidation?: boolean;
+  rrule?: string;
+}
+
+export interface UpdateAppointmentPayload extends Partial<Omit<CreateAppointmentPayload, 'locationId' | 'contactId'>> {
+  calendarId?: string;
+}
+
+export interface GHLAppointmentResponse {
+  event: GHLAppointment;
+}
+
+// Block Slot Types
+export interface GHLBlockSlot {
+  id: string;
+  locationId: string;
+  title?: string;
+  startTime: string;
+  endTime: string;
+  calendarId?: string;
+  assignedUserId?: string;
+}
+
+export interface CreateBlockSlotPayload {
+  locationId: string;
+  calendarId?: string;
+  assignedUserId?: string;
+  title?: string;
+  startTime: string;
+  endTime: string;
+}
+
+export interface UpdateBlockSlotPayload {
+  locationId: string;
+  calendarId?: string;
+  assignedUserId?: string;
+  title?: string;
+  startTime?: string;
+  endTime?: string;
+}
+
+// Calendar Event Types (for fetching events)
+export interface GHLCalendarEvent {
+  id: string;
+  calendarId?: string;
+  locationId: string;
+  title?: string;
+  startTime: string;
+  endTime: string;
+  status?: AppointmentStatus;
+  appointmentStatus?: AppointmentStatus;
+  contactId?: string;
+  assignedUserId?: string;
+  type?: 'appointment' | 'blocked_slot';
+  isRecurring?: boolean;
+  masterEventId?: string;
+}
+
+export interface GHLCalendarEventsResponse {
+  events: GHLCalendarEvent[];
+}
+
+// Free Slots Response
+export interface GHLFreeSlot {
+  slots: string[];
+}
+
+export interface GHLFreeSlotsResponse {
+  [date: string]: GHLFreeSlot;
+}
+
+// Appointment Notes Types
+export interface GHLAppointmentNote {
+  id: string;
+  appointmentId: string;
+  userId: string;
+  body: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CreateAppointmentNotePayload {
+  body: string;
+}
+
+export interface UpdateAppointmentNotePayload {
+  body: string;
+}
+
+export interface GHLAppointmentNotesResponse {
+  notes: GHLAppointmentNote[];
+}

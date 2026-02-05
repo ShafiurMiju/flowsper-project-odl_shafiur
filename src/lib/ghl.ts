@@ -33,6 +33,24 @@ import {
   GHLConversationAIActionsResponse,
   CreateConversationAIActionPayload,
   UpdateConversationAIActionPayload,
+  // Calendar Types
+  GHLCalendar,
+  CreateCalendarPayload,
+  UpdateCalendarPayload,
+  GHLCalendarGroup,
+  CreateCalendarGroupPayload,
+  UpdateCalendarGroupPayload,
+  GHLAppointment,
+  CreateAppointmentPayload,
+  UpdateAppointmentPayload,
+  GHLCalendarEvent,
+  GHLBlockSlot,
+  CreateBlockSlotPayload,
+  UpdateBlockSlotPayload,
+  GHLFreeSlotsResponse,
+  GHLAppointmentNote,
+  CreateAppointmentNotePayload,
+  UpdateAppointmentNotePayload,
 } from '@/types';
 
 const GHL_API_BASE = 'https://services.leadconnectorhq.com';
@@ -962,6 +980,241 @@ export class GHLClient {
 
   getApiKey(): string {
     return this.apiKey;
+  }
+
+  // ==================== CALENDARS ====================
+
+  async getCalendars(showDrafted: boolean = true, groupId?: string): Promise<{ calendars: GHLCalendar[] }> {
+    let url = `/calendars/?locationId=${this.locationId}&showDrafted=${showDrafted}`;
+    if (groupId) url += `&groupId=${groupId}`;
+    return this.requestWithVersion<{ calendars: GHLCalendar[] }>(url, '2021-04-15');
+  }
+
+  async getCalendar(calendarId: string): Promise<{ calendar: GHLCalendar }> {
+    return this.requestWithVersion<{ calendar: GHLCalendar }>(
+      `/calendars/${calendarId}`,
+      '2021-04-15'
+    );
+  }
+
+  async createCalendar(data: CreateCalendarPayload): Promise<{ calendar: GHLCalendar }> {
+    return this.requestWithVersion<{ calendar: GHLCalendar }>('/calendars/', '2021-04-15', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...data,
+        locationId: this.locationId,
+      }),
+    });
+  }
+
+  async updateCalendar(calendarId: string, data: UpdateCalendarPayload): Promise<{ calendar: GHLCalendar }> {
+    return this.requestWithVersion<{ calendar: GHLCalendar }>(
+      `/calendars/${calendarId}`,
+      '2021-04-15',
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  async deleteCalendar(calendarId: string): Promise<{ success: boolean }> {
+    return this.requestWithVersion<{ success: boolean }>(
+      `/calendars/${calendarId}`,
+      '2021-04-15',
+      { method: 'DELETE' }
+    );
+  }
+
+  async getFreeSlots(
+    calendarId: string,
+    startDate: number,
+    endDate: number,
+    timezone?: string,
+    userId?: string
+  ): Promise<GHLFreeSlotsResponse> {
+    let url = `/calendars/${calendarId}/free-slots?startDate=${startDate}&endDate=${endDate}`;
+    if (timezone) url += `&timezone=${encodeURIComponent(timezone)}`;
+    if (userId) url += `&userId=${userId}`;
+    return this.requestWithVersion<GHLFreeSlotsResponse>(url, '2021-04-15');
+  }
+
+  // ==================== CALENDAR GROUPS ====================
+
+  async getCalendarGroups(): Promise<{ groups: GHLCalendarGroup[] }> {
+    return this.requestWithVersion<{ groups: GHLCalendarGroup[] }>(
+      `/calendars/groups?locationId=${this.locationId}`,
+      '2021-04-15'
+    );
+  }
+
+  async createCalendarGroup(data: CreateCalendarGroupPayload): Promise<{ group: GHLCalendarGroup }> {
+    return this.requestWithVersion<{ group: GHLCalendarGroup }>('/calendars/groups', '2021-04-15', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...data,
+        locationId: this.locationId,
+      }),
+    });
+  }
+
+  async updateCalendarGroup(groupId: string, data: UpdateCalendarGroupPayload): Promise<{ group: GHLCalendarGroup }> {
+    return this.requestWithVersion<{ group: GHLCalendarGroup }>(
+      `/calendars/groups/${groupId}`,
+      '2021-04-15',
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  async deleteCalendarGroup(groupId: string): Promise<{ success: boolean }> {
+    return this.requestWithVersion<{ success: boolean }>(
+      `/calendars/groups/${groupId}`,
+      '2021-04-15',
+      { method: 'DELETE' }
+    );
+  }
+
+  // ==================== APPOINTMENTS ====================
+
+  async getAppointment(eventId: string): Promise<{ event: GHLAppointment }> {
+    return this.requestWithVersion<{ event: GHLAppointment }>(
+      `/calendars/events/appointments/${eventId}`,
+      '2021-04-15'
+    );
+  }
+
+  async createAppointment(data: CreateAppointmentPayload): Promise<GHLAppointment> {
+    return this.requestWithVersion<GHLAppointment>('/calendars/events/appointments', '2021-04-15', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...data,
+        locationId: this.locationId,
+      }),
+    });
+  }
+
+  async updateAppointment(eventId: string, data: UpdateAppointmentPayload): Promise<GHLAppointment> {
+    return this.requestWithVersion<GHLAppointment>(
+      `/calendars/events/appointments/${eventId}`,
+      '2021-04-15',
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  // ==================== CALENDAR EVENTS ====================
+
+  async getCalendarEvents(
+    startTime: number,
+    endTime: number,
+    options?: {
+      calendarId?: string;
+      userId?: string;
+      groupId?: string;
+    }
+  ): Promise<{ events: GHLCalendarEvent[] }> {
+    let url = `/calendars/events?locationId=${this.locationId}&startTime=${startTime}&endTime=${endTime}`;
+    if (options?.calendarId) url += `&calendarId=${options.calendarId}`;
+    if (options?.userId) url += `&userId=${options.userId}`;
+    if (options?.groupId) url += `&groupId=${options.groupId}`;
+    return this.requestWithVersion<{ events: GHLCalendarEvent[] }>(url, '2021-04-15');
+  }
+
+  async deleteEvent(eventId: string): Promise<{ succeeded: boolean }> {
+    return this.requestWithVersion<{ succeeded: boolean }>(
+      `/calendars/events/${eventId}`,
+      '2021-04-15',
+      {
+        method: 'DELETE',
+        body: JSON.stringify({}),
+      }
+    );
+  }
+
+  // ==================== BLOCKED SLOTS ====================
+
+  async getBlockedSlots(
+    startTime: number,
+    endTime: number,
+    options?: {
+      calendarId?: string;
+      userId?: string;
+      groupId?: string;
+    }
+  ): Promise<{ events: GHLBlockSlot[] }> {
+    let url = `/calendars/blocked-slots?locationId=${this.locationId}&startTime=${startTime}&endTime=${endTime}`;
+    if (options?.calendarId) url += `&calendarId=${options.calendarId}`;
+    if (options?.userId) url += `&userId=${options.userId}`;
+    if (options?.groupId) url += `&groupId=${options.groupId}`;
+    return this.requestWithVersion<{ events: GHLBlockSlot[] }>(url, '2021-04-15');
+  }
+
+  async createBlockSlot(data: CreateBlockSlotPayload): Promise<GHLBlockSlot> {
+    return this.requestWithVersion<GHLBlockSlot>('/calendars/events/block-slots', '2021-04-15', {
+      method: 'POST',
+      body: JSON.stringify({
+        ...data,
+        locationId: this.locationId,
+      }),
+    });
+  }
+
+  async updateBlockSlot(eventId: string, data: UpdateBlockSlotPayload): Promise<GHLBlockSlot> {
+    return this.requestWithVersion<GHLBlockSlot>(
+      `/calendars/events/block-slots/${eventId}`,
+      '2021-04-15',
+      {
+        method: 'PUT',
+        body: JSON.stringify({
+          ...data,
+          locationId: this.locationId,
+        }),
+      }
+    );
+  }
+
+  // ==================== APPOINTMENT NOTES ====================
+
+  async getAppointmentNotes(eventId: string): Promise<{ notes: GHLAppointmentNote[] }> {
+    return this.requestWithVersion<{ notes: GHLAppointmentNote[] }>(
+      `/calendars/events/appointments/${eventId}/notes`,
+      '2021-04-15'
+    );
+  }
+
+  async createAppointmentNote(eventId: string, data: CreateAppointmentNotePayload): Promise<GHLAppointmentNote> {
+    return this.requestWithVersion<GHLAppointmentNote>(
+      `/calendars/events/appointments/${eventId}/notes`,
+      '2021-04-15',
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  async updateAppointmentNote(eventId: string, noteId: string, data: UpdateAppointmentNotePayload): Promise<GHLAppointmentNote> {
+    return this.requestWithVersion<GHLAppointmentNote>(
+      `/calendars/events/appointments/${eventId}/notes/${noteId}`,
+      '2021-04-15',
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
+  }
+
+  async deleteAppointmentNote(eventId: string, noteId: string): Promise<{ success: boolean }> {
+    return this.requestWithVersion<{ success: boolean }>(
+      `/calendars/events/appointments/${eventId}/notes/${noteId}`,
+      '2021-04-15',
+      { method: 'DELETE' }
+    );
   }
 }
 

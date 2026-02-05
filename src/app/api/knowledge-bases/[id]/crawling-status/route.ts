@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getGHLClientForRequest } from '@/lib';
 
 /**
- * GET /api/knowledge-bases/[id]/crawling-status
- * Get crawling status for the latest operation
+ * GET /api/knowledge-bases/[id]/crawling-status?operationId=xxx
+ * Get crawling status for a specific operation
  */
 export async function GET(
   request: NextRequest,
@@ -11,6 +11,16 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const operationId = searchParams.get('operationId');
+
+    if (!operationId) {
+      return NextResponse.json(
+        { error: 'operationId query parameter is required' },
+        { status: 400 }
+      );
+    }
+
     const clientResult = await getGHLClientForRequest(request);
     
     if (clientResult.error) {
@@ -21,7 +31,7 @@ export async function GET(
     }
 
     const ghlClient = clientResult.ghlClient!;
-    const response = await ghlClient.getCrawlingStatus(id);
+    const response = await ghlClient.getCrawlingStatus(id, operationId);
 
     return NextResponse.json(response);
   } catch (error) {

@@ -17,6 +17,7 @@ import {
   ChevronRight,
   Check,
   BrainCircuit,
+  Calendar,
 } from 'lucide-react';
 import { useAuth } from '@/context';
 import { useState } from 'react';
@@ -48,6 +49,7 @@ const navItems = [
   { href: '/contacts', label: 'Contacts', icon: Users },
   { href: '/opportunities', label: 'Opportunities', icon: Target },
   { href: '/conversations', label: 'Conversations', icon: MessageCircle },
+  { href: '/calendars', label: 'Calendars', icon: Calendar },
   { href: '/conversation-ai', label: 'Conversation AI', icon: BrainCircuit },
   { href: '/voice-agents', label: 'Voice AI', icon: Bot },
   { href: '/activity', label: 'Activity Log', icon: Activity },
