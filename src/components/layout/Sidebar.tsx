@@ -18,6 +18,7 @@ import {
   Check,
   BrainCircuit,
   Calendar,
+  Share2,
 } from 'lucide-react';
 import { useAuth } from '@/context';
 import { useState } from 'react';
@@ -52,6 +53,7 @@ const navItems = [
   { href: '/calendars', label: 'Calendars', icon: Calendar },
   { href: '/conversation-ai', label: 'Conversation AI', icon: BrainCircuit },
   { href: '/voice-agents', label: 'Voice AI', icon: Bot },
+  { href: '/social-planner', label: 'Social Planner', icon: Share2 },
   { href: '/activity', label: 'Activity Log', icon: Activity },
 ];
 

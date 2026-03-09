@@ -38,17 +38,19 @@ const TIMEZONES = [
   { value: 'Australia/Sydney', label: 'Australia/Sydney (AEDT)' },
 ];
 
+// Voice IDs from GHL - mapped to voice names
+// Note: These are example voice IDs, check GHL documentation for actual voice IDs
 const VOICES = [
-  { value: 'jessica', label: 'Jessica - English, American, Female' },
-  { value: 'michael', label: 'Michael - English, American, Male' },
-  { value: 'sarah', label: 'Sarah - English, British, Female' },
-  { value: 'james', label: 'James - English, British, Male' },
-  { value: 'emma', label: 'Emma - English, Australian, Female' },
-  { value: 'oliver', label: 'Oliver - English, Australian, Male' },
-  { value: 'maria', label: 'Maria - Spanish, Female' },
-  { value: 'carlos', label: 'Carlos - Spanish, Male' },
-  { value: 'sophie', label: 'Sophie - French, Female' },
-  { value: 'pierre', label: 'Pierre - French, Male' },
+  { value: '507f1f77bcf86cd799439001', label: 'Jessica - English, American, Female' },
+  { value: '507f1f77bcf86cd799439002', label: 'Michael - English, American, Male' },
+  { value: '507f1f77bcf86cd799439003', label: 'Sarah - English, British, Female' },
+  { value: '507f1f77bcf86cd799439004', label: 'James - English, British, Male' },
+  { value: '507f1f77bcf86cd799439005', label: 'Emma - English, Australian, Female' },
+  { value: '507f1f77bcf86cd799439006', label: 'Oliver - English, Australian, Male' },
+  { value: '507f1f77bcf86cd799439007', label: 'Maria - Spanish, Female' },
+  { value: '507f1f77bcf86cd799439008', label: 'Carlos - Spanish, Male' },
+  { value: '507f1f77bcf86cd799439009', label: 'Sophie - French, Female' },
+  { value: '507f1f77bcf86cd799439010', label: 'Pierre - French, Male' },
 ];
 
 const LLM_MODELS = [
@@ -89,8 +91,8 @@ export function VoiceAgentForm({
     businessName: '',
     welcomeMessage: '',
     agentPrompt: '',
-    voiceId: 'jessica',
-    llmModel: 'gpt-4o',
+    voiceId: '507f1f77bcf86cd799439001', // Jessica - default voice ID (GHL V2 format)
+    llmModel: 'gpt-4o', // Keep for UI purposes, but won't be sent to GHL API
     knowledgeBaseId: '',
     language: 'en-US',
     timezone: 'America/New_York',
@@ -458,16 +460,19 @@ export function VoiceAgentForm({
     }
 
     console.log('💾 Submitting form with selectedPhoneNumbers:', selectedPhoneNumbers);
-    console.log('💾 formData.inboundNumber before submit:', formData.inboundNumber);
+    console.log('💾 formData.voiceId before submit:', formData.voiceId);
 
-    // Prepare payload with inboundNumbers as array (not inboundNumber as string)
-    const payload = {
-      ...formData,
-      inboundNumbers: selectedPhoneNumbers, // GHL expects array
-      inboundNumber: undefined, // Remove the string version
+    // Prepare payload for GHL API V2
+    // Remove llmModel as GHL V2 API doesn't accept it
+    const { llmModel, ...payloadWithoutLlm } = formData;
+    
+    const payload: CreateVoiceAgentPayload = {
+      ...payloadWithoutLlm,
+      inboundNumber: selectedPhoneNumbers.length > 0 ? selectedPhoneNumbers[0] : '', // GHL expects single inboundNumber
     };
     
-    console.log('💾 Final payload with inboundNumbers array:', payload);
+    console.log('💾 Final payload (llmModel removed):', payload);
+    console.log('💾 Voice ID being sent:', payload.voiceId);
 
     setLoading(true);
     try {
@@ -571,7 +576,7 @@ export function VoiceAgentForm({
 
               <Select
                 label="Voice"
-                value={formData.voiceId || 'jessica'}
+                value={formData.voiceId || '507f1f77bcf86cd799439001'}
                 onChange={(e) => handleChange('voiceId', e.target.value)}
                 options={VOICES}
               />
@@ -843,7 +848,7 @@ Your Goal: Gather contact information and assist callers with their inquiries."
 
       {/* Knowledge Base Modal */}
       {showKBModal && (
-        <div className="fixed inset-0 z-[60] overflow-y-auto">
+        <div className="fixed inset-0 z-60 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center p-4">
             <div
               className="fixed inset-0 bg-black/50"
