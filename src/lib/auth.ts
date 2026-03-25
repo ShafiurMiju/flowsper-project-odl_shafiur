@@ -252,14 +252,9 @@ export async function deleteSubAccount(subAccountId: string): Promise<boolean> {
     // Get sub-account to find user_id
     const subAccount = await db.collection<Doc>('sub_accounts').findOne({ _id: subAccountId });
 
-    // Delete all related data (cascade equivalent)
-    await Promise.all([
-      db.collection('messages').deleteMany({ sub_account_id: subAccountId }),
-      db.collection('conversations').deleteMany({ sub_account_id: subAccountId }),
-      db.collection('opportunities').deleteMany({ sub_account_id: subAccountId }),
-      db.collection('contacts').deleteMany({ sub_account_id: subAccountId }),
-      db.collection('activity_logs').deleteMany({ sub_account_id: subAccountId }),
-    ]);
+    // Delete related data stored in MongoDB
+    await db.collection('activity_logs').deleteMany({ sub_account_id: subAccountId });
+    await db.collection('admin_active_sub_account').deleteMany({ active_sub_account_id: subAccountId });
 
     // Delete sub-account
     await db.collection<Doc>('sub_accounts').deleteOne({ _id: subAccountId });

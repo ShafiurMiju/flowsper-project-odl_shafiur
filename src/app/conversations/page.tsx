@@ -14,7 +14,6 @@ export default function ConversationsPage() {
   const [contacts, setContacts] = useState<GHLContact[]>([]);
   const [loading, setLoading] = useState(true);
   const [messagesLoading, setMessagesLoading] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
   const [showNewMessage, setShowNewMessage] = useState(false);
   const [newMessage, setNewMessage] = useState('');
@@ -84,22 +83,6 @@ export default function ConversationsPage() {
       setMessages([]); // Set empty array on error
     } finally {
       setMessagesLoading(false);
-    }
-  };
-
-  const syncConversations = async () => {
-    setSyncing(true);
-    try {
-      const token = localStorage.getItem('access_token');
-      await fetch('/api/conversations/sync', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      await fetchConversations();
-    } catch (error) {
-      console.error('Error syncing conversations:', error);
-    } finally {
-      setSyncing(false);
     }
   };
 
@@ -210,15 +193,6 @@ export default function ConversationsPage() {
               <h2 className="text-xl font-bold text-foreground">Messages</h2>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={syncConversations}
-                disabled={syncing}
-                className="h-8 w-8 p-0"
-              >
-                <RefreshCw className={cn("w-4 h-4", syncing && "animate-spin")} />
-              </Button>
               <Button 
                 size="sm" 
                 onClick={() => setShowNewMessage(true)}

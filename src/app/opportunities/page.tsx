@@ -9,7 +9,7 @@ import {
   GHLContact,
   CreateOpportunityPayload,
 } from '@/types';
-import { Plus, RefreshCw, Target, TrendingUp, Kanban } from 'lucide-react';
+import { Plus, Target, TrendingUp, Kanban } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function OpportunitiesPage() {
@@ -18,7 +18,6 @@ export default function OpportunitiesPage() {
   const [contacts, setContacts] = useState<GHLContact[]>([]);
   const [selectedPipeline, setSelectedPipeline] = useState<string>('');
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingOpportunity, setEditingOpportunity] =
     useState<GHLOpportunity | null>(null);
@@ -82,22 +81,6 @@ export default function OpportunitiesPage() {
       fetchOpportunities();
     }
   }, [selectedPipeline, fetchOpportunities]);
-
-  const syncOpportunities = async () => {
-    setSyncing(true);
-    try {
-      const token = localStorage.getItem('access_token');
-      await fetch('/api/opportunities/sync', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      await fetchOpportunities();
-    } catch (error) {
-      console.error('Error syncing opportunities:', error);
-    } finally {
-      setSyncing(false);
-    }
-  };
 
   const handleCreateOpportunity = async (data: CreateOpportunityPayload) => {
     const token = localStorage.getItem('access_token');
@@ -220,15 +203,6 @@ export default function OpportunitiesPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button 
-            variant="secondary" 
-            onClick={syncOpportunities} 
-            loading={syncing}
-            className="gap-2"
-          >
-            <RefreshCw className={cn("w-4 h-4", syncing && "animate-spin")} />
-            Sync
-          </Button>
           <Button 
             onClick={() => setShowForm(true)}
             className="gap-2"

@@ -6,9 +6,12 @@
 //   - npm install (to have mongodb & bcryptjs available)
 //
 // This script creates:
-//   1. All required collections
-//   2. Indexes matching the original PostgreSQL schema
+//   1. Required collections (users, sub-accounts, activity logs)
+//   2. Indexes for fast lookups
 //   3. A default admin user (admin@flowsper.com / admin123)
+//
+// NOTE: Contacts, opportunities, conversations, and messages
+//       are loaded directly from GoHighLevel API - not stored in MongoDB.
 
 const { MongoClient } = require('mongodb');
 const bcrypt = require('bcryptjs');
@@ -32,10 +35,6 @@ async function init() {
     const collections = [
       'user_profiles',
       'sub_accounts',
-      'contacts',
-      'opportunities',
-      'conversations',
-      'messages',
       'activity_logs',
       'admin_active_sub_account',
       'refresh_tokens',
@@ -66,51 +65,6 @@ async function init() {
     await db.collection('sub_accounts').createIndex({ user_id: 1 });
     await db.collection('sub_accounts').createIndex({ ghl_location_id: 1 }, { unique: true });
     console.log('  ✔️  sub_accounts indexes');
-
-    // contacts
-    await db.collection('contacts').createIndex({ sub_account_id: 1 });
-    await db.collection('contacts').createIndex({ ghl_id: 1 });
-    await db.collection('contacts').createIndex({ email: 1 });
-    await db.collection('contacts').createIndex(
-      { sub_account_id: 1, ghl_id: 1 },
-      { unique: true }
-    );
-    console.log('  ✔️  contacts indexes');
-
-    // opportunities
-    await db.collection('opportunities').createIndex({ sub_account_id: 1 });
-    await db.collection('opportunities').createIndex({ ghl_id: 1 });
-    await db.collection('opportunities').createIndex({ pipeline_id: 1 });
-    await db.collection('opportunities').createIndex({ status: 1 });
-    await db.collection('opportunities').createIndex(
-      { sub_account_id: 1, ghl_id: 1 },
-      { unique: true }
-    );
-    console.log('  ✔️  opportunities indexes');
-
-    // conversations
-    await db.collection('conversations').createIndex({ sub_account_id: 1 });
-    await db.collection('conversations').createIndex({ ghl_id: 1 });
-    await db.collection('conversations').createIndex({ contact_id: 1 });
-    await db.collection('conversations').createIndex({ last_message_date: -1 });
-    await db.collection('conversations').createIndex(
-      { sub_account_id: 1, ghl_id: 1 },
-      { unique: true }
-    );
-    console.log('  ✔️  conversations indexes');
-
-    // messages
-    await db.collection('messages').createIndex({ sub_account_id: 1 });
-    await db.collection('messages').createIndex({ conversation_id: 1 });
-    await db.collection('messages').createIndex({ ghl_id: 1 });
-    await db.collection('messages').createIndex({ message_date: -1 });
-    await db.collection('messages').createIndex({ direction: 1 });
-    await db.collection('messages').createIndex({ status: 1 });
-    await db.collection('messages').createIndex(
-      { sub_account_id: 1, ghl_id: 1 },
-      { unique: true }
-    );
-    console.log('  ✔️  messages indexes');
 
     // activity_logs
     await db.collection('activity_logs').createIndex({ sub_account_id: 1 });
@@ -173,6 +127,8 @@ async function init() {
     console.log('\n🎉 MongoDB initialization complete!');
     console.log(`   Database: ${MONGODB_DB}`);
     console.log(`   URI:      ${MONGODB_URI}`);
+    console.log('\n   📝 Note: Contacts, opportunities, conversations, and messages');
+    console.log('   are loaded directly from GoHighLevel API (not stored in MongoDB).');
 
   } catch (error) {
     console.error('❌ Initialization failed:', error);

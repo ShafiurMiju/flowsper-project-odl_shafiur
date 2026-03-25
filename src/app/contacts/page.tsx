@@ -4,40 +4,39 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Button, Card, CardHeader, Input, PageLoader, SkeletonCard } from '@/components/ui';
 import { ContactCard, ContactForm } from '@/components/contacts';
 import { GHLContact, CreateContactPayload } from '@/types';
-import { Plus, RefreshCw, Search, Download, Upload, Users, UserPlus, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Search, Download, Upload, Users, UserPlus, Edit2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
 
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<GHLContact[]>([]);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editingContact, setEditingContact] = useState<GHLContact | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [totalContacts, setTotalContacts] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchContacts = useCallback(async () => {
     setLoading(true);
-    setCurrentPage(1);
     try {
       const token = localStorage.getItem('access_token');
       const url = search
-        ? `/api/contacts?search=${encodeURIComponent(search)}`
-        : '/api/contacts';
+        ? `/api/contacts?search=${encodeURIComponent(search)}&limit=${itemsPerPage}`
+        : `/api/contacts?limit=${itemsPerPage}&page=${currentPage}`;
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       setContacts(data.contacts || []);
+      setTotalContacts(data.meta?.total || data.total || data.contacts?.length || 0);
     } catch (error) {
       console.error('Error fetching contacts:', error);
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [search, currentPage, itemsPerPage]);
 
   useEffect(() => {
     const debounce = setTimeout(() => {
@@ -46,21 +45,10 @@ export default function ContactsPage() {
     return () => clearTimeout(debounce);
   }, [fetchContacts]);
 
-  const syncContacts = async () => {
-    setSyncing(true);
-    try {
-      const token = localStorage.getItem('access_token');
-      await fetch('/api/contacts/sync', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      await fetchContacts();
-    } catch (error) {
-      console.error('Error syncing contacts:', error);
-    } finally {
-      setSyncing(false);
-    }
-  };
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
 
   const handleCreateContact = async (data: CreateContactPayload) => {
     const token = localStorage.getItem('access_token');
@@ -274,15 +262,6 @@ export default function ContactsPage() {
             className="hidden"
           />
           <Button 
-            variant="secondary" 
-            onClick={syncContacts} 
-            loading={syncing}
-            className="gap-2"
-          >
-            <RefreshCw className={cn("w-4 h-4", syncing && "animate-spin")} />
-            Sync
-          </Button>
-          <Button 
             onClick={() => setShowForm(true)}
             className="gap-2"
           >
@@ -315,7 +294,7 @@ export default function ContactsPage() {
             <div>
               <h3 className="font-semibold text-foreground">All Contacts</h3>
               <p className="text-sm text-muted-foreground">
-                {loading ? 'Loading...' : `${contacts.length} contacts found`}
+                {loading ? 'Loading...' : `${totalContacts} contacts found`}
               </p>
             </div>
           </div>
@@ -377,12 +356,7 @@ export default function ContactsPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-card divide-y divide-border/50">
-                  {contacts
-                    .slice(
-                      (currentPage - 1) * itemsPerPage,
-                      currentPage * itemsPerPage
-                    )
-                    .map((contact) => (
+                  {contacts.map((contact) => (
                       <tr key={contact.id} className="hover:bg-muted/50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -458,9 +432,8 @@ export default function ContactsPage() {
                   }}
                   className="px-3 py-2 rounded-lg border border-border bg-card text-foreground text-sm"
                 >
-                  <option value="5">5</option>
                   <option value="10">10</option>
-                  <option value="25">25</option>
+                  <option value="20">20</option>
                   <option value="50">50</option>
                   <option value="100">100</option>
                 </select>
@@ -469,7 +442,7 @@ export default function ContactsPage() {
 
               <div className="flex items-center gap-4">
                 <span className="text-sm text-muted-foreground">
-                  Page {currentPage} of {Math.ceil(contacts.length / itemsPerPage)}
+                  Page {currentPage} of {Math.max(1, Math.ceil(totalContacts / itemsPerPage))}
                 </span>
                 <div className="flex gap-2">
                   <button
@@ -482,10 +455,10 @@ export default function ContactsPage() {
                   <button
                     onClick={() =>
                       setCurrentPage((p) =>
-                        Math.min(Math.ceil(contacts.length / itemsPerPage), p + 1)
+                        Math.min(Math.max(1, Math.ceil(totalContacts / itemsPerPage)), p + 1)
                       )
                     }
-                    disabled={currentPage >= Math.ceil(contacts.length / itemsPerPage)}
+                    disabled={currentPage >= Math.ceil(totalContacts / itemsPerPage)}
                     className="px-3 py-2 rounded-lg border border-border text-foreground hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     Next

@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb, getGHLClientForRequest, logActivity, Doc } from '@/lib';
+import { getGHLClientForRequest, logActivity } from '@/lib';
 import { CreateContactPayload } from '@/types';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-// GET /api/contacts/[id] - Get a single contact
+// GET /api/contacts/[id] - Get a single contact from GHL
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const clientResult = await getGHLClientForRequest(request);
-    
+
     if (clientResult.error) {
       return NextResponse.json(
         { error: clientResult.error },
@@ -31,11 +31,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-// PUT /api/contacts/[id] - Update a contact
+// PUT /api/contacts/[id] - Update a contact in GHL
 export async function PUT(request: NextRequest, { params }: RouteParams) {
   try {
     const clientResult = await getGHLClientForRequest(request);
-    
+
     if (clientResult.error) {
       return NextResponse.json(
         { error: clientResult.error },
@@ -49,28 +49,9 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const body: Partial<CreateContactPayload> = await request.json();
 
-    // Update in GHL
     const result = await ghlClient.updateContact(id, body);
     const contact = result.contact;
 
-    // Update in MongoDB
-    const db = await getDb();
-    await db.collection<Doc>('contacts').updateOne(
-      { ghl_id: id, sub_account_id: subAccount.id },
-      {
-        $set: {
-          first_name: contact.firstName || null,
-          last_name: contact.lastName || null,
-          email: contact.email || null,
-          phone: contact.phone || null,
-          company_name: contact.companyName || null,
-          tags: contact.tags || [],
-          updated_at: new Date().toISOString(),
-        },
-      }
-    );
-
-    // Log activity
     await logActivity({
       sub_account_id: subAccount.id,
       user_id: authUser.id,
@@ -91,11 +72,11 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-// DELETE /api/contacts/[id] - Delete a contact
+// DELETE /api/contacts/[id] - Delete a contact from GHL
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
     const clientResult = await getGHLClientForRequest(request);
-    
+
     if (clientResult.error) {
       return NextResponse.json(
         { error: clientResult.error },
@@ -108,7 +89,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const authUser = clientResult.authUser!;
     const { id } = await params;
 
-    // Get contact info before deletion for logging
     let contactName = 'Unknown';
     try {
       const { contact } = await ghlClient.getContact(id);
@@ -117,17 +97,8 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       // Contact might already be partially deleted
     }
 
-    // Delete from GHL
     const result = await ghlClient.deleteContact(id);
 
-    // Delete from MongoDB
-    const db = await getDb();
-    await db.collection<Doc>('contacts').deleteOne({
-      ghl_id: id,
-      sub_account_id: subAccount.id,
-    });
-
-    // Log activity
     await logActivity({
       sub_account_id: subAccount.id,
       user_id: authUser.id,
