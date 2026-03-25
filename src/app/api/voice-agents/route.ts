@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGHLClientForRequest, supabaseAdmin } from '@/lib';
+import { getGHLClientForRequest, logActivity } from '@/lib';
 
 // GET /api/voice-agents - Get all voice agents
 export async function GET(request: NextRequest) {
@@ -52,16 +52,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log('📥 Received body:', JSON.stringify(body, null, 2));
 
-    // Remove fields not accepted by GHL API during creation
-    // voiceId: We're using friendly names (jessica, michael) but GHL expects actual IDs, so remove it to let GHL auto-generate
     const { knowledgeBaseId, llmModel, voiceId, ...rawPayload } = body;
 
-    // Clean up the payload - remove empty strings and undefined values
     const createPayload: any = {};
     
     Object.keys(rawPayload).forEach(key => {
       const value = rawPayload[key];
-      // Only include non-empty values
       if (value !== '' && value !== null && value !== undefined) {
         createPayload[key] = value;
       }
@@ -71,13 +67,12 @@ export async function POST(request: NextRequest) {
 
     const result = await ghlClient.createVoiceAgent(createPayload);
 
-    // Log activity if we have sub-account and user
     if (subAccount && authUser && result.id) {
-      await supabaseAdmin.from('activity_logs').insert({
+      await logActivity({
         sub_account_id: subAccount.id,
         user_id: authUser.id,
         action: 'create',
-        entity_type: 'contact' as const,
+        entity_type: 'voice_agent',
         entity_id: result.id,
         entity_name: `Voice Agent: ${result.agentName || body.agentName}`,
         details: { agentName: result.agentName || body.agentName },

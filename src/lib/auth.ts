@@ -1,6 +1,43 @@
-import { createClient } from '@supabase/supabase-js';
-import { supabaseAdmin } from './supabase';
+import { randomUUID } from 'crypto';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { getDb, toDoc, Doc } from './mongodb';
 import { DBUserProfile, DBSubAccount, AuthUser, CreateSubAccountRequest } from '@/types';
+
+// =====================================================
+// AUTH CONFIGURATION
+// =====================================================
+
+const JWT_SECRET = process.env.JWT_SECRET || 'flowsper-secret-change-in-production';
+const JWT_EXPIRES_IN = '7d';
+const REFRESH_EXPIRES_IN = '30d';
+const SALT_ROUNDS = 10;
+
+// =====================================================
+// TOKEN HELPERS
+// =====================================================
+
+function generateTokens(userId: string, email: string) {
+  const access_token = jwt.sign(
+    { sub: userId, email },
+    JWT_SECRET,
+    { expiresIn: JWT_EXPIRES_IN }
+  );
+  const refresh_token = jwt.sign(
+    { sub: userId, email, type: 'refresh' },
+    JWT_SECRET,
+    { expiresIn: REFRESH_EXPIRES_IN }
+  );
+  return { access_token, refresh_token };
+}
+
+function verifyToken(token: string): { sub: string; email: string } | null {
+  try {
+    return jwt.verify(token, JWT_SECRET) as { sub: string; email: string };
+  } catch {
+    return null;
+  }
+}
 
 // =====================================================
 // AUTH HELPER FUNCTIONS
@@ -11,54 +48,38 @@ import { DBUserProfile, DBSubAccount, AuthUser, CreateSubAccountRequest } from '
  */
 export async function getAuthUser(accessToken: string): Promise<AuthUser | null> {
   try {
-    // Create a client with the user's token
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    
-    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      },
-    });
+    const decoded = verifyToken(accessToken);
+    if (!decoded) return null;
 
-    const { data: { user }, error } = await supabase.auth.getUser();
-    if (error || !user) return null;
+    const db = await getDb();
 
     // Get user profile
-    const { data: profile } = await supabaseAdmin
-      .from('user_profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+    const profileDoc = await db.collection<Doc>('user_profiles').findOne({ _id: decoded.sub });
+    if (!profileDoc) return null;
+
+    const profile = toDoc<DBUserProfile>(profileDoc);
+    if (!profile) return null;
 
     // Get user's sub-account (if sub-account user)
     let subAccount: DBSubAccount | null = null;
     let activeSubAccountId: string | null = null;
 
-    if (profile?.role === 'sub_account') {
-      const { data } = await supabaseAdmin
-        .from('sub_accounts')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-      subAccount = data;
-      activeSubAccountId = data?.id || null;
-    } else if (profile?.role === 'admin') {
+    if (profile.role === 'sub_account') {
+      const saDoc = await db.collection<Doc>('sub_accounts').findOne({ user_id: decoded.sub });
+      subAccount = toDoc<DBSubAccount>(saDoc);
+      activeSubAccountId = subAccount?.id || null;
+    } else if (profile.role === 'admin') {
       // Get admin's active sub-account
-      const { data } = await supabaseAdmin
-        .from('admin_active_sub_account')
-        .select('active_sub_account_id')
-        .eq('admin_user_id', user.id)
-        .single();
-      activeSubAccountId = data?.active_sub_account_id || null;
+      const adminActive = await db.collection<Doc>('admin_active_sub_account').findOne({
+        admin_user_id: decoded.sub,
+      });
+      activeSubAccountId = adminActive?.active_sub_account_id || null;
     }
 
     return {
-      id: user.id,
-      email: user.email || '',
-      profile: profile as DBUserProfile | null,
+      id: decoded.sub,
+      email: profile.email,
+      profile,
       subAccount,
       activeSubAccountId,
     };
@@ -84,62 +105,55 @@ export async function createSubAccount(
   data: CreateSubAccountRequest
 ): Promise<{ success: boolean; error?: string; subAccount?: DBSubAccount }> {
   try {
-    // 1. Create auth user for sub-account
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    const db = await getDb();
+
+    // Check if email already exists
+    const existing = await db.collection<Doc>('user_profiles').findOne({ email: data.email });
+    if (existing) {
+      return { success: false, error: 'A user with this email already exists' };
+    }
+
+    const userId = randomUUID();
+    const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
+    const now = new Date().toISOString();
+
+    // 1. Create user profile
+    await db.collection<Doc>('user_profiles').insertOne({
+      _id: userId,
       email: data.email,
-      password: data.password,
-      email_confirm: true,
-      user_metadata: {
-        full_name: data.name,
-        role: 'sub_account',
-      },
+      full_name: data.name,
+      password_hash: hashedPassword,
+      role: 'sub_account',
+      is_active: true,
+      created_at: now,
+      updated_at: now,
     });
 
-    if (authError || !authData.user) {
-      return { success: false, error: authError?.message || 'Failed to create user' };
-    }
+    // 2. Create sub-account linked to the new user
+    const subAccountId = randomUUID();
+    const subAccountDoc = {
+      _id: subAccountId,
+      user_id: userId,
+      name: data.name,
+      ghl_location_id: data.ghl_location_id,
+      ghl_api_key: data.ghl_api_key,
+      is_active: true,
+      created_by: adminUserId,
+      created_at: now,
+      updated_at: now,
+    };
 
-    // 2. Create user profile (required because we removed the auto-trigger)
-    const { error: profileError } = await supabaseAdmin
-      .from('user_profiles')
-      .insert({
-        id: authData.user.id,
-        email: data.email,
-        full_name: data.name,
-        role: 'sub_account',
-        is_active: true,
-      });
+    await db.collection<Doc>('sub_accounts').insertOne(subAccountDoc);
 
-    if (profileError) {
-      // Rollback: delete the auth user
-      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-      return { success: false, error: 'Failed to create user profile: ' + profileError.message };
-    }
-
-    // 3. Create sub-account linked to the new user
-    const { data: subAccount, error: subAccountError } = await supabaseAdmin
-      .from('sub_accounts')
-      .insert({
-        user_id: authData.user.id,
-        name: data.name,
-        ghl_location_id: data.ghl_location_id,
-        ghl_api_key: data.ghl_api_key,
-        created_by: adminUserId,
-        is_active: true,
-      })
-      .select()
-      .single();
-
-    if (subAccountError) {
-      // Rollback: delete the auth user and profile
-      await supabaseAdmin.from('user_profiles').delete().eq('id', authData.user.id);
-      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
-      return { success: false, error: subAccountError.message };
-    }
-
-    return { success: true, subAccount: subAccount as DBSubAccount };
-  } catch (error) {
+    const subAccount = toDoc<DBSubAccount>(subAccountDoc);
+    return { success: true, subAccount: subAccount! };
+  } catch (error: any) {
     console.error('Error creating sub-account:', error);
+
+    if (error?.code === 11000) {
+      return { success: false, error: 'A user with this email or location already exists' };
+    }
+
     return { success: false, error: 'An unexpected error occurred' };
   }
 }
@@ -148,17 +162,19 @@ export async function createSubAccount(
  * Get all sub-accounts (admin only)
  */
 export async function getAllSubAccounts(): Promise<DBSubAccount[]> {
-  const { data, error } = await supabaseAdmin
-    .from('sub_accounts')
-    .select('*')
-    .order('created_at', { ascending: false });
+  try {
+    const db = await getDb();
+    const docs = await db
+      .collection<Doc>('sub_accounts')
+      .find({})
+      .sort({ created_at: -1 })
+      .toArray();
 
-  if (error) {
+    return docs.map(doc => toDoc<DBSubAccount>(doc)!);
+  } catch (error) {
     console.error('Error fetching sub-accounts:', error);
     return [];
   }
-
-  return data as DBSubAccount[];
 }
 
 /**
@@ -168,39 +184,41 @@ export async function setAdminActiveSubAccount(
   adminUserId: string,
   subAccountId: string | null
 ): Promise<boolean> {
-  const { error } = await supabaseAdmin
-    .from('admin_active_sub_account')
-    .upsert({
-      admin_user_id: adminUserId,
-      active_sub_account_id: subAccountId,
-    }, {
-      onConflict: 'admin_user_id',
-    });
-
-  if (error) {
+  try {
+    const db = await getDb();
+    await db.collection<Doc>('admin_active_sub_account').updateOne(
+      { admin_user_id: adminUserId },
+      {
+        $set: {
+          active_sub_account_id: subAccountId,
+          updated_at: new Date().toISOString(),
+        },
+        $setOnInsert: {
+          _id: randomUUID(),
+          admin_user_id: adminUserId,
+        },
+      },
+      { upsert: true }
+    );
+    return true;
+  } catch (error) {
     console.error('Error setting active sub-account:', error);
     return false;
   }
-
-  return true;
 }
 
 /**
  * Get sub-account by ID
  */
 export async function getSubAccountById(subAccountId: string): Promise<DBSubAccount | null> {
-  const { data, error } = await supabaseAdmin
-    .from('sub_accounts')
-    .select('*')
-    .eq('id', subAccountId)
-    .single();
-
-  if (error) {
+  try {
+    const db = await getDb();
+    const doc = await db.collection<Doc>('sub_accounts').findOne({ _id: subAccountId });
+    return toDoc<DBSubAccount>(doc);
+  } catch (error) {
     console.error('Error fetching sub-account:', error);
     return null;
   }
-
-  return data as DBSubAccount;
 }
 
 /**
@@ -210,19 +228,18 @@ export async function updateSubAccount(
   subAccountId: string,
   updates: Partial<Pick<DBSubAccount, 'name' | 'ghl_location_id' | 'ghl_api_key' | 'is_active'>>
 ): Promise<DBSubAccount | null> {
-  const { data, error } = await supabaseAdmin
-    .from('sub_accounts')
-    .update(updates)
-    .eq('id', subAccountId)
-    .select()
-    .single();
-
-  if (error) {
+  try {
+    const db = await getDb();
+    const result = await db.collection<Doc>('sub_accounts').findOneAndUpdate(
+      { _id: subAccountId },
+      { $set: { ...updates, updated_at: new Date().toISOString() } },
+      { returnDocument: 'after' }
+    );
+    return toDoc<DBSubAccount>(result);
+  } catch (error) {
     console.error('Error updating sub-account:', error);
     return null;
   }
-
-  return data as DBSubAccount;
 }
 
 /**
@@ -230,27 +247,26 @@ export async function updateSubAccount(
  */
 export async function deleteSubAccount(subAccountId: string): Promise<boolean> {
   try {
+    const db = await getDb();
+
     // Get sub-account to find user_id
-    const { data: subAccount } = await supabaseAdmin
-      .from('sub_accounts')
-      .select('user_id')
-      .eq('id', subAccountId)
-      .single();
+    const subAccount = await db.collection<Doc>('sub_accounts').findOne({ _id: subAccountId });
 
-    // Delete sub-account (cascade will delete contacts, opportunities, etc.)
-    const { error: deleteError } = await supabaseAdmin
-      .from('sub_accounts')
-      .delete()
-      .eq('id', subAccountId);
+    // Delete all related data (cascade equivalent)
+    await Promise.all([
+      db.collection('messages').deleteMany({ sub_account_id: subAccountId }),
+      db.collection('conversations').deleteMany({ sub_account_id: subAccountId }),
+      db.collection('opportunities').deleteMany({ sub_account_id: subAccountId }),
+      db.collection('contacts').deleteMany({ sub_account_id: subAccountId }),
+      db.collection('activity_logs').deleteMany({ sub_account_id: subAccountId }),
+    ]);
 
-    if (deleteError) {
-      console.error('Error deleting sub-account:', deleteError);
-      return false;
-    }
+    // Delete sub-account
+    await db.collection<Doc>('sub_accounts').deleteOne({ _id: subAccountId });
 
     // Delete auth user if exists
     if (subAccount?.user_id) {
-      await supabaseAdmin.auth.admin.deleteUser(subAccount.user_id);
+      await db.collection<Doc>('user_profiles').deleteOne({ _id: subAccount.user_id });
     }
 
     return true;
@@ -264,38 +280,46 @@ export async function deleteSubAccount(subAccountId: string): Promise<boolean> {
  * Verify user credentials and return session
  */
 export async function signIn(email: string, password: string) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  
-  const supabase = createClient(supabaseUrl, supabaseAnonKey);
-  
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  try {
+    const db = await getDb();
+    const user = await db.collection<Doc>('user_profiles').findOne({ email });
 
-  if (error) {
-    return { success: false, error: error.message };
+    if (!user || !user.password_hash) {
+      return { success: false, error: 'Invalid credentials' };
+    }
+
+    const isValid = await bcrypt.compare(password, user.password_hash);
+    if (!isValid) {
+      return { success: false, error: 'Invalid credentials' };
+    }
+
+    if (!user.is_active) {
+      return { success: false, error: 'Account is disabled' };
+    }
+
+    const tokens = generateTokens(user._id as string, user.email);
+
+    return {
+      success: true,
+      session: tokens,
+      user: {
+        id: user._id,
+        email: user.email,
+        user_metadata: {
+          full_name: user.full_name,
+          role: user.role,
+        },
+      },
+    };
+  } catch (error) {
+    console.error('Sign in error:', error);
+    return { success: false, error: 'An unexpected error occurred' };
   }
-
-  return { success: true, session: data.session, user: data.user };
 }
 
 /**
- * Sign out user
+ * Sign out user (JWT-based - no server-side session to invalidate)
  */
-export async function signOut(accessToken: string) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    global: {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    },
-  });
-
-  const { error } = await supabase.auth.signOut();
-  return { success: !error, error: error?.message };
+export async function signOut(_accessToken: string): Promise<{ success: boolean; error?: string }> {
+  return { success: true };
 }

@@ -53,7 +53,7 @@ export default function LoginPage() {
             <span className="text-background/80">with confidence</span>
           </h2>
           <p className="text-lg text-background/70 max-w-md">
-            A powerful CRM integrating GoHighLevel with Supabase for seamless customer management and voice AI automation.
+            A powerful CRM integrating GoHighLevel with MongoDB for seamless customer management and voice AI automation.
           </p>
           <div className="mt-12 grid grid-cols-3 gap-6">
             <div className="bg-background/10 backdrop-blur-sm rounded-xl p-4">
@@ -156,7 +156,7 @@ export default function LoginPage() {
           </Card>
 
           <p className="text-center text-sm text-muted-foreground">
-            Powered by GoHighLevel + Supabase
+            Powered by GoHighLevel + MongoDB
           </p>
         </div>
       </div>

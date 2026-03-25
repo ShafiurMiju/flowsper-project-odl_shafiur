@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGHLClientForRequest, supabaseAdmin } from '@/lib';
+import { getGHLClientForRequest, logActivity } from '@/lib';
 
 type RouteParams = {
   params: Promise<{ id: string }>;
@@ -53,13 +53,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const result = await ghlClient.updateConversationAIAgent(id, body);
 
-    // Log activity
     if (subAccount && authUser) {
-      await supabaseAdmin.from('activity_logs').insert({
+      await logActivity({
         sub_account_id: subAccount.id,
         user_id: authUser.id,
         action: 'update',
-        entity_type: 'contact' as const,
+        entity_type: 'conversation_ai_agent',
         entity_id: id,
         entity_name: `Conversation AI Agent: ${result.name}`,
         details: { agentName: result.name, updates: Object.keys(body) },
@@ -94,7 +93,6 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     const authUser = clientResult.authUser!;
     const { id } = await params;
 
-    // Get agent info before deleting for logging
     let agentName = 'Unknown Agent';
     try {
       const agent = await ghlClient.getConversationAIAgent(id);
@@ -105,13 +103,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     const result = await ghlClient.deleteConversationAIAgent(id);
 
-    // Log activity
     if (subAccount && authUser) {
-      await supabaseAdmin.from('activity_logs').insert({
+      await logActivity({
         sub_account_id: subAccount.id,
         user_id: authUser.id,
         action: 'delete',
-        entity_type: 'contact' as const,
+        entity_type: 'conversation_ai_agent',
         entity_id: id,
         entity_name: `Conversation AI Agent: ${agentName}`,
         details: { agentName },

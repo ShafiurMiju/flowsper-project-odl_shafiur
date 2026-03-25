@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGHLClientForRequest, supabaseAdmin } from '@/lib';
+import { getGHLClientForRequest, logActivity } from '@/lib';
 
 /**
- * GET /api/voice-actions/[id]
- * Get a voice action by ID
- * @see https://marketplace.gohighlevel.com/docs/ghl/voice-ai/get-action
+ * GET /api/voice-actions/[id] - Get a voice action by ID
  */
 export async function GET(
   request: NextRequest,
@@ -35,9 +33,7 @@ export async function GET(
 }
 
 /**
- * PUT /api/voice-actions/[id]
- * Update a voice action
- * @see https://marketplace.gohighlevel.com/docs/ghl/voice-ai/update-action
+ * PUT /api/voice-actions/[id] - Update a voice action
  */
 export async function PUT(
   request: NextRequest,
@@ -61,13 +57,12 @@ export async function PUT(
 
     const result = await ghlClient.updateVoiceAction(id, body);
 
-    // Log activity if we have sub-account and user
     if (subAccount && authUser && result.id) {
-      await supabaseAdmin.from('activity_logs').insert({
+      await logActivity({
         sub_account_id: subAccount.id,
         user_id: authUser.id,
         action: 'update',
-        entity_type: 'contact' as const,
+        entity_type: 'voice_action',
         entity_id: result.id,
         entity_name: `Voice Action: ${result.name || body.name}`,
         details: { type: result.actionType },
@@ -85,9 +80,7 @@ export async function PUT(
 }
 
 /**
- * DELETE /api/voice-actions/[id]
- * Delete a voice action
- * @see https://marketplace.gohighlevel.com/docs/ghl/voice-ai/delete-action
+ * DELETE /api/voice-actions/[id] - Delete a voice action
  */
 export async function DELETE(
   request: NextRequest,
@@ -108,7 +101,6 @@ export async function DELETE(
     const subAccount = clientResult.subAccount!;
     const authUser = clientResult.authUser!;
     
-    // Get agentId from query params (required by API)
     const { searchParams } = new URL(request.url);
     const agentId = searchParams.get('agentId');
     
@@ -121,13 +113,12 @@ export async function DELETE(
 
     await ghlClient.deleteVoiceAction(id, agentId);
 
-    // Log activity if we have sub-account and user
     if (subAccount && authUser) {
-      await supabaseAdmin.from('activity_logs').insert({
+      await logActivity({
         sub_account_id: subAccount.id,
         user_id: authUser.id,
         action: 'delete',
-        entity_type: 'contact' as const,
+        entity_type: 'voice_action',
         entity_id: id,
         entity_name: `Voice Action`,
         details: { agentId },

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGHLClientForRequest, supabaseAdmin } from '@/lib';
+import { getGHLClientForRequest, logActivity } from '@/lib';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -47,10 +47,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const body = await request.json();
 
-    // Map frontend fields to GHL API expected fields
     const updatePayload: Record<string, any> = {};
     
-    // Only include valid GHL fields
     const validFields = [
       'name', 'description', 'slug', 'widgetSlug', 'calendarType', 'widgetType',
       'eventType', 'eventTitle', 'eventColor', 'isActive', 'groupId', 'teamMembers',
@@ -73,7 +71,6 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // Ensure at least name is provided if updating
     if (Object.keys(updatePayload).length === 0) {
       return NextResponse.json(
         { error: 'No valid fields to update' },
@@ -84,13 +81,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     try {
       const result = await ghlClient.updateCalendar(id, updatePayload);
 
-      // Log activity
       if (subAccount && authUser) {
-        await supabaseAdmin.from('activity_logs').insert({
+        await logActivity({
           sub_account_id: subAccount.id,
           user_id: authUser.id,
           action: 'update',
-          entity_type: 'calendar' as const,
+          entity_type: 'calendar',
           entity_id: id,
           entity_name: `Calendar: ${result.calendar?.name || 'Unknown'}`,
           details: updatePayload,
@@ -133,13 +129,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     await ghlClient.deleteCalendar(id);
 
-    // Log activity
     if (subAccount && authUser) {
-      await supabaseAdmin.from('activity_logs').insert({
+      await logActivity({
         sub_account_id: subAccount.id,
         user_id: authUser.id,
         action: 'delete',
-        entity_type: 'contact' as const,
+        entity_type: 'calendar',
         entity_id: id,
         entity_name: `Calendar: ${id}`,
         details: {},

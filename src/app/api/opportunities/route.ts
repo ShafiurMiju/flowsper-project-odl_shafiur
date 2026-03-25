@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin, getGHLClientForRequest } from '@/lib';
+import { getDb, generateId, getGHLClientForRequest, logActivity, Doc } from '@/lib';
 import { CreateOpportunityPayload } from '@/types';
 
 // GET /api/opportunities - List opportunities from GHL
@@ -51,9 +51,11 @@ export async function POST(request: NextRequest) {
     const result = await ghlClient.createOpportunity(body);
     const opportunity = result.opportunity;
 
-    // Sync to Supabase with sub_account_id
-    await supabaseAdmin.from('opportunities').insert({
-      sub_account_id: subAccount!.id,
+    // Sync to MongoDB with sub_account_id
+    const db = await getDb();
+    await db.collection<Doc>('opportunities').insertOne({
+      _id: generateId(),
+      sub_account_id: subAccount.id,
       ghl_id: opportunity.id,
       name: opportunity.name,
       monetary_value: opportunity.monetaryValue || null,
@@ -61,12 +63,15 @@ export async function POST(request: NextRequest) {
       pipeline_stage_id: opportunity.pipelineStageId,
       status: opportunity.status || 'open',
       ghl_contact_id: opportunity.contactId || null,
+      synced_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     });
 
     // Log activity
-    await supabaseAdmin.from('activity_logs').insert({
-      sub_account_id: subAccount!.id,
-      user_id: authUser!.id,
+    await logActivity({
+      sub_account_id: subAccount.id,
+      user_id: authUser.id,
       action: 'create',
       entity_type: 'opportunity',
       entity_id: opportunity.id,

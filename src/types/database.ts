@@ -1,4 +1,4 @@
-// Supabase Database Types - Multi-Tenant Version
+// MongoDB Database Types - Multi-Tenant Version
 
 // User roles
 export type UserRole = 'admin' | 'sub_account';
@@ -8,7 +8,7 @@ export type ConversationType = 'SMS' | 'Email' | 'GMB' | 'IG' | 'FB' | 'WhatsApp
 export type MessageDirection = 'inbound' | 'outbound';
 export type MessageStatus = 'pending' | 'scheduled' | 'sent' | 'delivered' | 'read' | 'failed' | 'undelivered';
 
-// User Profile (linked to Supabase Auth)
+// User Profile (stored in MongoDB user_profiles collection)
 export interface DBUserProfile {
   id: string;
   email: string;
@@ -79,8 +79,8 @@ export interface DBActivityLog {
   id: string;
   sub_account_id: string;
   user_id: string | null;
-  action: 'create' | 'update' | 'delete' | 'sync' | 'move' | 'login' | 'logout';
-  entity_type: 'contact' | 'opportunity' | 'sub_account' | 'user';
+  action: string;
+  entity_type: string;
   entity_id: string;
   entity_name: string | null;
   details: Record<string, unknown> | null;
@@ -133,7 +133,7 @@ export interface DBMessage {
 // =====================================================
 
 export interface InsertDBUserProfile {
-  id: string; // From Supabase Auth
+  id: string; // User UUID
   email: string;
   full_name?: string | null;
   role?: UserRole;
@@ -176,8 +176,8 @@ export interface InsertDBOpportunity {
 export interface InsertDBActivityLog {
   sub_account_id: string;
   user_id?: string | null;
-  action: 'create' | 'update' | 'delete' | 'sync' | 'move' | 'login' | 'logout';
-  entity_type: 'contact' | 'opportunity' | 'sub_account' | 'user';
+  action: string;
+  entity_type: string;
   entity_id: string;
   entity_name?: string | null;
   details?: Record<string, unknown> | null;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin, getGHLClientForRequest } from '@/lib';
+import { getDb, generateId, getGHLClientForRequest, logActivity, Doc } from '@/lib';
 
-// POST /api/opportunities/sync - Sync all opportunities from GHL to Supabase
+// POST /api/opportunities/sync - Sync all opportunities from GHL to MongoDB
 export async function POST(request: NextRequest) {
   try {
     const clientResult = await getGHLClientForRequest(request);
@@ -20,43 +20,46 @@ export async function POST(request: NextRequest) {
     // Fetch opportunities from GHL
     const { opportunities } = await ghlClient.getOpportunities(undefined, 100);
 
+    const db = await getDb();
     let synced = 0;
     let errors = 0;
 
     for (const opportunity of opportunities) {
       try {
-        // Upsert opportunity in Supabase
-        const { error } = await supabaseAdmin.from('opportunities').upsert(
+        // Upsert opportunity in MongoDB
+        await db.collection<Doc>('opportunities').updateOne(
+          { sub_account_id: subAccount.id, ghl_id: opportunity.id },
           {
-            sub_account_id: subAccount!.id,
-            ghl_id: opportunity.id,
-            name: opportunity.name,
-            monetary_value: opportunity.monetaryValue || null,
-            pipeline_id: opportunity.pipelineId,
-            pipeline_stage_id: opportunity.pipelineStageId,
-            status: opportunity.status || 'open',
-            ghl_contact_id: opportunity.contactId || null,
-            synced_at: new Date().toISOString(),
+            $set: {
+              name: opportunity.name,
+              monetary_value: opportunity.monetaryValue || null,
+              pipeline_id: opportunity.pipelineId,
+              pipeline_stage_id: opportunity.pipelineStageId,
+              status: opportunity.status || 'open',
+              ghl_contact_id: opportunity.contactId || null,
+              synced_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+            $setOnInsert: {
+              _id: generateId(),
+              sub_account_id: subAccount.id,
+              ghl_id: opportunity.id,
+              created_at: new Date().toISOString(),
+            },
           },
-          { onConflict: 'ghl_id' }
+          { upsert: true }
         );
-
-        if (error) {
-          console.error('Error syncing opportunity:', error);
-          errors++;
-        } else {
-          synced++;
-        }
+        synced++;
       } catch (err) {
-        console.error('Error processing opportunity:', err);
+        console.error('Error syncing opportunity:', err);
         errors++;
       }
     }
 
     // Log sync activity
-    await supabaseAdmin.from('activity_logs').insert({
-      sub_account_id: subAccount!.id,
-      user_id: authUser!.id,
+    await logActivity({
+      sub_account_id: subAccount.id,
+      user_id: authUser.id,
       action: 'sync',
       entity_type: 'opportunity',
       entity_id: 'bulk',

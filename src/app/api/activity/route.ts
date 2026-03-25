@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib';
-import { supabase } from '@/lib/supabase';
+import { getDb, Doc } from '@/lib';
+import { getAuthUser } from '@/lib/auth';
 
 // GET /api/activity - Get activity logs
 export async function GET(request: NextRequest) {
@@ -17,45 +17,37 @@ export async function GET(request: NextRequest) {
     const token = authHeader.substring(7);
 
     // Verify the token and get user
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
-    if (authError || !user) {
+    const authUser = await getAuthUser(token);
+
+    if (!authUser) {
       return NextResponse.json(
         { error: 'Unauthorized - Invalid token' },
         { status: 401 }
       );
     }
 
-    // Get user profile to determine sub_account_id
-    const { data: profile } = await supabaseAdmin
-      .from('user_profiles')
-      .select('is_admin')
-      .eq('id', user.id)
-      .single();
+    const db = await getDb();
 
+    // Determine sub_account_id based on user role
     let subAccountId: string | null = null;
 
-    if (profile?.is_admin) {
+    if (authUser.profile?.role === 'admin') {
       // For admin, get their active sub-account
-      const { data: activeSubAccount } = await supabaseAdmin
-        .from('admin_active_sub_account')
-        .select('sub_account_id')
-        .eq('admin_id', user.id)
-        .single();
-      
+      const activeSubAccount = await db.collection<Doc>('admin_active_sub_account').findOne({
+        admin_user_id: authUser.id,
+      });
+
       if (activeSubAccount) {
-        subAccountId = activeSubAccount.sub_account_id;
+        subAccountId = activeSubAccount.active_sub_account_id;
       }
     } else {
       // For regular user, get their sub-account
-      const { data: subAccount } = await supabaseAdmin
-        .from('sub_accounts')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-      
+      const subAccount = await db.collection<Doc>('sub_accounts').findOne({
+        user_id: authUser.id,
+      });
+
       if (subAccount) {
-        subAccountId = subAccount.id;
+        subAccountId = subAccount._id as string;
       }
     }
 
@@ -68,30 +60,27 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get('limit') || '50');
-    const entityType = searchParams.get('entityType') as 'contact' | 'opportunity' | undefined;
+    const entityType = searchParams.get('entityType') || undefined;
 
-    let query = supabaseAdmin
-      .from('activity_logs')
-      .select('*')
-      .eq('sub_account_id', subAccountId)
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
+    const filter: Record<string, any> = { sub_account_id: subAccountId };
     if (entityType) {
-      query = query.eq('entity_type', entityType);
+      filter.entity_type = entityType;
     }
 
-    const { data, error } = await query;
+    const docs = await db
+      .collection<Doc>('activity_logs')
+      .find(filter)
+      .sort({ created_at: -1 })
+      .limit(limit)
+      .toArray();
 
-    if (error) {
-      console.error('Error fetching activity logs:', error);
-      return NextResponse.json(
-        { error: 'Failed to fetch activity logs' },
-        { status: 500 }
-      );
-    }
+    // Map _id to id
+    const logs = docs.map(doc => {
+      const { _id, ...rest } = doc;
+      return { id: _id, ...rest };
+    });
 
-    return NextResponse.json({ logs: data || [] });
+    return NextResponse.json({ logs });
   } catch (error) {
     console.error('Error fetching activity logs:', error);
     return NextResponse.json(

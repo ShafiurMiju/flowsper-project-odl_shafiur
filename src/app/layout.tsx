@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Flowsper | GHL + Supabase Integration",
-  description: "A CRM application integrating GoHighLevel with Supabase",
+  title: "Flowsper | GHL + MongoDB Integration",
+  description: "A CRM application integrating GoHighLevel with MongoDB",
 };
 
 export default function RootLayout({

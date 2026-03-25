@@ -1,5 +1,6 @@
 export { ghlClient, createGHLClient, GHLClient } from './ghl';
-export { supabase, supabaseAdmin, isSupabaseConfigured } from './supabase';
+export { getDb, getClient, generateId, toDoc, toDocs } from './mongodb';
+export type { Doc } from './mongodb';
 export { logActivity, getActivityLogs } from './activity-logger';
 export {
   getAuthUser,

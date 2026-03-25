@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin, getGHLClientForRequest } from '@/lib';
+import { getDb, generateId, getGHLClientForRequest, logActivity, Doc } from '@/lib';
 import { CreateContactPayload } from '@/types';
 
 // GET /api/contacts - List contacts from GHL
@@ -15,7 +15,6 @@ export async function GET(request: NextRequest) {
     }
 
     const ghlClient = clientResult.ghlClient!;
-    const subAccount = clientResult.subAccount!;
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get('search');
 
@@ -82,9 +81,11 @@ export async function POST(request: NextRequest) {
     const result = await ghlClient.createContact(body);
     const contact = result.contact;
 
-    // Sync to Supabase with sub_account_id
-    await supabaseAdmin.from('contacts').insert({
-      sub_account_id: subAccount!.id,
+    // Sync to MongoDB with sub_account_id
+    const db = await getDb();
+    await db.collection<Doc>('contacts').insertOne({
+      _id: generateId(),
+      sub_account_id: subAccount.id,
       ghl_id: contact.id,
       first_name: contact.firstName || null,
       last_name: contact.lastName || null,
@@ -93,11 +94,14 @@ export async function POST(request: NextRequest) {
       company_name: contact.companyName || null,
       tags: contact.tags || [],
       source: contact.source || 'dataflow-crm',
+      synced_at: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     });
 
     // Log activity
-    await supabaseAdmin.from('activity_logs').insert({
-      sub_account_id: subAccount!.id,
+    await logActivity({
+      sub_account_id: subAccount.id,
       user_id: clientResult.authUser!.id,
       action: 'create',
       entity_type: 'contact',

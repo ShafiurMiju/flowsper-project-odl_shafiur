@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGHLClientForRequest, supabaseAdmin } from '@/lib';
+import { getGHLClientForRequest, logActivity } from '@/lib';
 
 // POST /api/calendars/appointments - Create an appointment
 export async function POST(request: NextRequest) {
@@ -19,7 +19,6 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     
-    // Validate required fields
     if (!body.calendarId) {
       return NextResponse.json({ error: 'calendarId is required' }, { status: 400 });
     }
@@ -30,8 +29,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'startTime is required' }, { status: 400 });
     }
     
-    // Map to valid GHL API fields only
-    // Valid appointmentStatus: new, confirmed, cancelled, showed, noshow, invalid
     const appointmentPayload = {
       calendarId: body.calendarId,
       contactId: body.contactId,
@@ -45,12 +42,11 @@ export async function POST(request: NextRequest) {
       meetingLocationType: body.meetingLocationType,
       meetingLocationId: body.meetingLocationId,
       overrideLocationConfig: body.overrideLocationConfig,
-      ignoreDateRange: body.ignoreDateRange ?? true, // Default to true to allow flexible booking
-      toNotify: body.toNotify ?? true, // Default to true to send notifications
+      ignoreDateRange: body.ignoreDateRange ?? true,
+      toNotify: body.toNotify ?? true,
       ignoreFreeSlotValidation: body.ignoreFreeSlotValidation,
     };
     
-    // Remove undefined fields
     const cleanPayload = Object.fromEntries(
       Object.entries(appointmentPayload).filter(([_, v]) => v !== undefined)
     );
@@ -59,13 +55,12 @@ export async function POST(request: NextRequest) {
     
     const result = await ghlClient.createAppointment(cleanPayload as any);
 
-    // Log activity
     if (subAccount && authUser && result.id) {
-      await supabaseAdmin.from('activity_logs').insert({
+      await logActivity({
         sub_account_id: subAccount.id,
         user_id: authUser.id,
         action: 'create',
-        entity_type: 'appointment' as const,
+        entity_type: 'appointment',
         entity_id: result.id,
         entity_name: `Appointment: ${result.title || 'Untitled'}`,
         details: body,

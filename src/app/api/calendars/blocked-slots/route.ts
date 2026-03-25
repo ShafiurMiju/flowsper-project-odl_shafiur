@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGHLClientForRequest, supabaseAdmin } from '@/lib';
+import { getGHLClientForRequest, logActivity } from '@/lib';
 
 // GET /api/calendars/blocked-slots - Get blocked slots
 export async function GET(request: NextRequest) {
@@ -15,7 +15,6 @@ export async function GET(request: NextRequest) {
 
     const ghlClient = clientResult.ghlClient!;
 
-    // Get query parameters
     const { searchParams } = new URL(request.url);
     const startTime = parseInt(searchParams.get('startTime') || '0');
     const endTime = parseInt(searchParams.get('endTime') || '0');
@@ -64,13 +63,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const result = await ghlClient.createBlockSlot(body);
 
-    // Log activity
     if (subAccount && authUser && result.id) {
-      await supabaseAdmin.from('activity_logs').insert({
+      await logActivity({
         sub_account_id: subAccount.id,
         user_id: authUser.id,
         action: 'create',
-        entity_type: 'contact' as const,
+        entity_type: 'blocked_slot',
         entity_id: result.id,
         entity_name: `Block Slot: ${result.title || 'Blocked Time'}`,
         details: body,

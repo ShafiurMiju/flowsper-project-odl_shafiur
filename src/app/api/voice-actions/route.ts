@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGHLClientForRequest, supabaseAdmin } from '@/lib';
+import { getGHLClientForRequest, logActivity } from '@/lib';
 
 /**
  * POST /api/voice-actions
  * Create a new voice action
- * @see https://marketplace.gohighlevel.com/docs/ghl/voice-ai/create-action
  */
 export async function POST(request: NextRequest) {
   try {
@@ -24,13 +23,12 @@ export async function POST(request: NextRequest) {
 
     const result = await ghlClient.createVoiceAction(body);
 
-    // Log activity if we have sub-account and user
     if (subAccount && authUser && result.id) {
-      await supabaseAdmin.from('activity_logs').insert({
+      await logActivity({
         sub_account_id: subAccount.id,
         user_id: authUser.id,
         action: 'create',
-        entity_type: 'contact' as const,
+        entity_type: 'voice_action',
         entity_id: result.id,
         entity_name: `Voice Action: ${result.name || body.name}`,
         details: { type: result.actionType || body.actionType },

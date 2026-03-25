@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGHLClientForRequest, supabaseAdmin } from '@/lib';
+import { getGHLClientForRequest, logActivity } from '@/lib';
 
 // GET /api/calendars - Get all calendars
 export async function GET(request: NextRequest) {
@@ -54,11 +54,11 @@ export async function POST(request: NextRequest) {
 
       // Log activity
       if (subAccount && authUser && result.calendar?.id) {
-        await supabaseAdmin.from('activity_logs').insert({
+        await logActivity({
           sub_account_id: subAccount.id,
           user_id: authUser.id,
           action: 'create',
-          entity_type: 'contact' as const,
+          entity_type: 'calendar',
           entity_id: result.calendar.id,
           entity_name: `Calendar: ${result.calendar.name}`,
           details: body,

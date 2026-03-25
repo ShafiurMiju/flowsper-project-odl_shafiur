@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGHLClientForRequest, supabaseAdmin } from '@/lib';
+import { getGHLClientForRequest, logActivity } from '@/lib';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -49,24 +49,18 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const body = await request.json();
 
-    // Remove fields not accepted by GHL API during update
     const { knowledgeBaseId, llmModel, voiceId, ...rawPayload } = body;
 
-    // Clean up the payload - remove empty strings and undefined values
-    // For phone numbers, always include inboundNumbers as array (GHL expects array, not string)
     const updatePayload: any = {};
     
     Object.keys(rawPayload).forEach(key => {
       const value = rawPayload[key];
-      // Always include inboundNumbers even if empty array (to clear phone numbers)
       if (key === 'inboundNumbers') {
         updatePayload[key] = Array.isArray(value) ? value : [];
       }
-      // Skip the old inboundNumber string field
       else if (key === 'inboundNumber') {
-        // Don't include it - we're using inboundNumbers array instead
+        // Don't include it
       }
-      // Only include other non-empty values
       else if (value !== '' && value !== null && value !== undefined) {
         updatePayload[key] = value;
       }
@@ -76,13 +70,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const result = await ghlClient.updateVoiceAgent(id, updatePayload);
 
-    // Log activity if we have sub-account and user
     if (subAccount && authUser && result) {
-      await supabaseAdmin.from('activity_logs').insert({
+      await logActivity({
         sub_account_id: subAccount.id,
         user_id: authUser.id,
         action: 'update',
-        entity_type: 'contact' as const,
+        entity_type: 'voice_agent',
         entity_id: id,
         entity_name: `Voice Agent: ${result.agentName || body.agentName || 'Unknown'}`,
         details: body,
@@ -118,13 +111,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     await ghlClient.deleteVoiceAgent(id);
 
-    // Log activity if we have sub-account and user
     if (subAccount && authUser) {
-      await supabaseAdmin.from('activity_logs').insert({
+      await logActivity({
         sub_account_id: subAccount.id,
         user_id: authUser.id,
         action: 'delete',
-        entity_type: 'contact' as const,
+        entity_type: 'voice_agent',
         entity_id: id,
         entity_name: 'Voice Agent',
         details: {},

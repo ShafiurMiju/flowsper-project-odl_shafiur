@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGHLClientForRequest, supabaseAdmin } from '@/lib';
+import { getGHLClientForRequest, logActivity } from '@/lib';
 
 type RouteParams = { params: Promise<{ eventId: string }> };
 
@@ -22,13 +22,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     await ghlClient.deleteEvent(eventId);
 
-    // Log activity
     if (subAccount && authUser) {
-      await supabaseAdmin.from('activity_logs').insert({
+      await logActivity({
         sub_account_id: subAccount.id,
         user_id: authUser.id,
         action: 'delete',
-        entity_type: 'contact' as const,
+        entity_type: 'event',
         entity_id: eventId,
         entity_name: `Event: ${eventId}`,
         details: {},

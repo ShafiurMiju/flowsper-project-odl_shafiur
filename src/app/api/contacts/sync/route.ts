@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin, getGHLClientForRequest } from '@/lib';
+import { getDb, generateId, getGHLClientForRequest, logActivity, Doc } from '@/lib';
 
-// POST /api/contacts/sync - Sync all contacts from GHL to Supabase
+// POST /api/contacts/sync - Sync all contacts from GHL to MongoDB
 export async function POST(request: NextRequest) {
   try {
     const clientResult = await getGHLClientForRequest(request);
@@ -20,44 +20,47 @@ export async function POST(request: NextRequest) {
     // Fetch contacts from GHL
     const { contacts } = await ghlClient.getContacts(100);
 
+    const db = await getDb();
     let synced = 0;
     let errors = 0;
 
     for (const contact of contacts) {
       try {
-        // Upsert contact in Supabase with sub_account_id
-        const { error } = await supabaseAdmin.from('contacts').upsert(
+        // Upsert contact in MongoDB with sub_account_id
+        await db.collection<Doc>('contacts').updateOne(
+          { sub_account_id: subAccount.id, ghl_id: contact.id },
           {
-            sub_account_id: subAccount!.id,
-            ghl_id: contact.id,
-            first_name: contact.firstName || null,
-            last_name: contact.lastName || null,
-            email: contact.email || null,
-            phone: contact.phone || null,
-            company_name: contact.companyName || null,
-            tags: contact.tags || [],
-            source: contact.source || null,
-            synced_at: new Date().toISOString(),
+            $set: {
+              first_name: contact.firstName || null,
+              last_name: contact.lastName || null,
+              email: contact.email || null,
+              phone: contact.phone || null,
+              company_name: contact.companyName || null,
+              tags: contact.tags || [],
+              source: contact.source || null,
+              synced_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+            $setOnInsert: {
+              _id: generateId(),
+              sub_account_id: subAccount.id,
+              ghl_id: contact.id,
+              created_at: new Date().toISOString(),
+            },
           },
-          { onConflict: 'sub_account_id,ghl_id' }
+          { upsert: true }
         );
-
-        if (error) {
-          console.error('Error syncing contact:', error);
-          errors++;
-        } else {
-          synced++;
-        }
+        synced++;
       } catch (err) {
-        console.error('Error processing contact:', err);
+        console.error('Error syncing contact:', err);
         errors++;
       }
     }
 
     // Log sync activity
-    await supabaseAdmin.from('activity_logs').insert({
-      sub_account_id: subAccount!.id,
-      user_id: authUser!.id,
+    await logActivity({
+      sub_account_id: subAccount.id,
+      user_id: authUser.id,
       action: 'sync',
       entity_type: 'contact',
       entity_id: 'bulk',

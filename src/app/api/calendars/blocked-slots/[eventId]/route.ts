@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGHLClientForRequest, supabaseAdmin } from '@/lib';
+import { getGHLClientForRequest, logActivity } from '@/lib';
 
 type RouteParams = { params: Promise<{ eventId: string }> };
 
@@ -23,13 +23,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const result = await ghlClient.updateBlockSlot(eventId, body);
 
-    // Log activity
     if (subAccount && authUser) {
-      await supabaseAdmin.from('activity_logs').insert({
+      await logActivity({
         sub_account_id: subAccount.id,
         user_id: authUser.id,
         action: 'update',
-        entity_type: 'contact' as const,
+        entity_type: 'blocked_slot',
         entity_id: eventId,
         entity_name: `Block Slot: ${result.title || 'Blocked Time'}`,
         details: body,

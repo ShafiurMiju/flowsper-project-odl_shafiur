@@ -278,7 +278,7 @@ export default function DashboardPage() {
                   </svg>
                 </div>
                 <div>
-                  <p className="font-medium text-foreground">Supabase</p>
+                  <p className="font-medium text-foreground">MongoDB</p>
                   <p className="text-sm text-muted-foreground">Database & Storage</p>
                 </div>
               </div>

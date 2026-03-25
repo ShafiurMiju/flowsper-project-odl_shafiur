@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin, getGHLClientForRequest } from '@/lib';
+import { getDb, getGHLClientForRequest, logActivity, Doc } from '@/lib';
 import { CreateContactPayload } from '@/types';
 
 interface RouteParams {
@@ -53,25 +53,27 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const result = await ghlClient.updateContact(id, body);
     const contact = result.contact;
 
-    // Update in Supabase
-    await supabaseAdmin
-      .from('contacts')
-      .update({
-        first_name: contact.firstName || null,
-        last_name: contact.lastName || null,
-        email: contact.email || null,
-        phone: contact.phone || null,
-        company_name: contact.companyName || null,
-        tags: contact.tags || [],
-        updated_at: new Date().toISOString(),
-      })
-      .eq('ghl_id', id)
-      .eq('sub_account_id', subAccount!.id);
+    // Update in MongoDB
+    const db = await getDb();
+    await db.collection<Doc>('contacts').updateOne(
+      { ghl_id: id, sub_account_id: subAccount.id },
+      {
+        $set: {
+          first_name: contact.firstName || null,
+          last_name: contact.lastName || null,
+          email: contact.email || null,
+          phone: contact.phone || null,
+          company_name: contact.companyName || null,
+          tags: contact.tags || [],
+          updated_at: new Date().toISOString(),
+        },
+      }
+    );
 
     // Log activity
-    await supabaseAdmin.from('activity_logs').insert({
-      sub_account_id: subAccount!.id,
-      user_id: authUser!.id,
+    await logActivity({
+      sub_account_id: subAccount.id,
+      user_id: authUser.id,
       action: 'update',
       entity_type: 'contact',
       entity_id: id,
@@ -118,17 +120,17 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     // Delete from GHL
     const result = await ghlClient.deleteContact(id);
 
-    // Delete from Supabase
-    await supabaseAdmin
-      .from('contacts')
-      .delete()
-      .eq('ghl_id', id)
-      .eq('sub_account_id', subAccount!.id);
+    // Delete from MongoDB
+    const db = await getDb();
+    await db.collection<Doc>('contacts').deleteOne({
+      ghl_id: id,
+      sub_account_id: subAccount.id,
+    });
 
     // Log activity
-    await supabaseAdmin.from('activity_logs').insert({
-      sub_account_id: subAccount!.id,
-      user_id: authUser!.id,
+    await logActivity({
+      sub_account_id: subAccount.id,
+      user_id: authUser.id,
       action: 'delete',
       entity_type: 'contact',
       entity_id: id,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGHLClientForRequest, supabaseAdmin } from '@/lib';
+import { getGHLClientForRequest, logActivity } from '@/lib';
 
 type RouteParams = { params: Promise<{ groupId: string }> };
 
@@ -23,13 +23,12 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     const result = await ghlClient.updateCalendarGroup(groupId, body);
 
-    // Log activity
     if (subAccount && authUser) {
-      await supabaseAdmin.from('activity_logs').insert({
+      await logActivity({
         sub_account_id: subAccount.id,
         user_id: authUser.id,
         action: 'update',
-        entity_type: 'contact' as const,
+        entity_type: 'calendar_group',
         entity_id: groupId,
         entity_name: `Calendar Group: ${result.group?.name || 'Unknown'}`,
         details: body,
@@ -65,13 +64,12 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     await ghlClient.deleteCalendarGroup(groupId);
 
-    // Log activity
     if (subAccount && authUser) {
-      await supabaseAdmin.from('activity_logs').insert({
+      await logActivity({
         sub_account_id: subAccount.id,
         user_id: authUser.id,
         action: 'delete',
-        entity_type: 'contact' as const,
+        entity_type: 'calendar_group',
         entity_id: groupId,
         entity_name: `Calendar Group: ${groupId}`,
         details: {},

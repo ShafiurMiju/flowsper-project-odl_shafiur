@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getGHLClientForRequest, supabaseAdmin } from '@/lib';
+import { getGHLClientForRequest, logActivity } from '@/lib';
 
 // GET /api/conversation-ai/agents - Search/List Conversation AI agents
 export async function GET(request: NextRequest) {
@@ -15,7 +15,6 @@ export async function GET(request: NextRequest) {
 
     const ghlClient = clientResult.ghlClient!;
     
-    // Parse query params
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('query') || undefined;
     const limit = searchParams.get('limit') ? Number(searchParams.get('limit')) : undefined;
@@ -54,13 +53,12 @@ export async function POST(request: NextRequest) {
 
     const result = await ghlClient.createConversationAIAgent(body);
 
-    // Log activity
     if (subAccount && authUser && result.id) {
-      await supabaseAdmin.from('activity_logs').insert({
+      await logActivity({
         sub_account_id: subAccount.id,
         user_id: authUser.id,
         action: 'create',
-        entity_type: 'contact' as const,
+        entity_type: 'conversation_ai_agent',
         entity_id: result.id,
         entity_name: `Conversation AI Agent: ${result.name}`,
         details: { agentName: result.name, mode: result.mode },
